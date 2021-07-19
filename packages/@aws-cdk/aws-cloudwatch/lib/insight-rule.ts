@@ -18,7 +18,7 @@ export interface IInsightRule extends core.IResource {
 
   /**
      * Name of Contributor Insights Rule
-     *
+     * Name must be insightRule + <attribute>, so with the attribute being RuleName, must be InsightRuleRuleName
      * @attribute
      */
   readonly insightRuleRuleName: string;
@@ -145,7 +145,7 @@ export class InsightRule extends InsightRuleBase {
     insightRuleName: string): IInsightRule {
     class Import extends InsightRuleBase {
       public readonly insightRuleArn = core.Stack.of(scope).formatArn({
-        service: 'cloudformation',
+        service: 'cloudwatch',
         resource: 'insight-rule',
         resourceName: insightRuleName,
       });
@@ -216,7 +216,7 @@ export class InsightRule extends InsightRuleBase {
          * @see https://docs.aws.amazon.com/cdk/api/latest/python/aws_cdk.aws_cloudwatch/CfnInsightRule.html
          */
     this.insightRuleArn = insightRule.attrArn;
-    this.insightRuleRuleName = insightRule.ref;
+    this.insightRuleRuleName = insightRule.attrRuleName;
   }
 
 }
