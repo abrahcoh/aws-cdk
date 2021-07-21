@@ -13,6 +13,7 @@ export * from './text';
 export * from './widget';
 export * from './alarm-status-widget';
 export * from './insight-rule';
+export * from './insights-rule-body';
 
 // AWS::CloudWatch CloudFormation Resources:
 export * from './cloudwatch.generated';
