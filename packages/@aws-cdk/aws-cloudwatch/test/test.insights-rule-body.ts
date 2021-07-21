@@ -4,6 +4,7 @@ import {
   InsightsRuleBodyFilterBuilder,
   InsightsRuleBodyFilterOperations,
   InsightsRuleBodyFilterStatistics,
+  CloudWatchLogsV1RuleBody,
 } from '../lib';
 
 //for filters
@@ -14,6 +15,8 @@ const basicNumericalFilterAverage = { Match: '$.BytesRecieved', GreaterThan: 0, 
 
 
 export = {
+
+  /** Testing filters **/
 
   'In Insights-Rule-Body, filter does not work without filterOperation method'(test: Test) {
 
@@ -156,6 +159,27 @@ export = {
     ),
     //expected
     JSON.stringify(basicNumericalFilterAverage));
+
+    test.done();
+  },
+
+  /** Testing CloudWatchV1LogRuleBodys **/
+  'In Insights-Rule-Body, basic version 1 CloudWatch log rule'(test: Test) {
+
+    test.equal(CloudWatchLogsV1RuleBody.fromRuleBody(
+      {
+        logGroups: ['a'],
+        contribution: {
+          keys: ['sdf'],
+        },
+      },
+    ), JSON.stringify({
+      logGroups: ['me'],
+      contribution: {
+        keys: ['s'],
+        valueOf: 's',
+      },
+    }));
 
     test.done();
   },

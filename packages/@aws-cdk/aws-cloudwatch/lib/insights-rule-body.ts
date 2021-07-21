@@ -1,3 +1,4 @@
+import * as fs from 'fs';
 import { dropUndefined } from './private/object';
 
 /**
@@ -290,6 +291,222 @@ export class InsightsRuleBodyFilter {
       IgnoreCase: filter.filterIgnoreCase,
       Statistic: filter.filterStatistic,
     });
+  }
+
+}
+
+/**
+ * Properties of an Insights Rule Contribution
+ */
+export interface IInsightsRuleContribution {
+  /**
+   * Array up to four log fields that are used as dimensions to classify contributors
+   */
+  keys: string[],
+
+  /**
+   * Specify this only when specifying SUM as AggregateOn and for log fields with numerical values. Used to sort
+   * contributors by the sum of the values of their fields in valueOf
+   *
+   * @default - none, no contributor sorting will occur
+   */
+  valueOf?: string,
+
+  /**
+   * Array up to four filters to narrow the log events that are included in the report
+   * If multiple are provided, Contributor Insights evaluates them with a logical AND operator
+   *
+   * @default - none, no narrowing of log events
+   */
+  filters?: any[]
+}
+
+/**
+ * Properties of an Insights Rule Schema
+ */
+export interface IInsightsRuleSchema {
+  /**
+   * Insights Rule Body schema name
+   */
+  name: string,
+
+  /**
+   * Insights Rule Body schema version
+   */
+  version: number
+}
+
+/**
+ * An enum that describes the possible values for AggregateOn field in an Insights Rule Body
+ */
+export enum InsightsRuleAggregates {
+  /**
+   * Aggregates the report based on the count of occurances of the contribution
+   */
+  COUNT = 'Count',
+
+  /**
+   * Aggregates the report based on the sum of the values of the field specified in valueOf
+   */
+  SUM = 'Sum'
+}
+
+/**
+ * An enum that describes the possible log formats for a CloudWatch log rule
+ */
+export enum InsightsRuleLogFormats {
+  /**
+   * Log groups emit data with a JSON format
+   */
+  JSON = 'JSON',
+
+  /**
+   * Log groups emit data with a CLF format
+   */
+  CLF = 'CLF'
+}
+
+/**
+ * Common properties to all Insights Rule Bodies (besides string rule bodies)
+ */
+export interface IInsightsRuleBody {
+  /**
+   * Defines the name and version of the rule body schema
+   */
+  schema?: IInsightsRuleSchema,
+
+  /**
+   * Defines all properties of the contribution for the rule body
+   */
+  contribution: IInsightsRuleContribution,
+
+  /**
+   * Defines how the rule will aggregate the data for the report
+   */
+  aggregateOn?: InsightsRuleAggregates
+}
+
+/**
+ * Properties of a version 1 CloudWatch Logs rule body
+ */
+export interface ICloudWatchLogsV1RuleBody extends IInsightsRuleBody{
+
+  /**
+   * Defines the log groups the rule will pull data from
+   */
+  logGroups: string[],
+
+  /**
+   * Defines the format of the log group data
+   *
+   * @default - JSON if Fields undefined, else CLF
+   */
+  logFormat?: InsightsRuleLogFormats,
+
+  /**
+   * Defines the aliases for log keys for CLF formatted log groups
+   */
+  fields?: {[index: string] : string}
+}
+
+/**
+ * Class that defines the static import methods for a version 1 CloudWatch Logs rule body
+ */
+export class CloudWatchLogsV1RuleBody {
+
+  /**
+   * Creates a version 1 CloudWatch logs rule body from an ICloudWatchLogsV1RuleBody interface
+   * @param ruleBody interface that describes the rule body
+   */
+  public static fromRuleBody(ruleBody: ICloudWatchLogsV1RuleBody): string {
+    ruleBody = this.setRuleBodyDefaults(ruleBody);
+    this.validateRuleBody(ruleBody);
+    return JSON.stringify(
+      dropUndefined(ruleBody),
+    );
+  }
+
+  /**
+   * Creates a version 1 CloudWatch logs rule body from contents stored in a file
+   * @param filepath location of file with a version 1 CloudWatch logs rule body
+   * @param encoding encoding of file
+   */
+  public static fromFile(filepath: string, encoding : BufferEncoding = 'utf8'): string {
+    /**
+     * TODO: Need to inquire on what the policy is for try/catch. I know the CDK does not like try/catch as no error should
+     * be recoverable; however, there may be some merit for catching, if only to give better error messages
+     */
+
+    //If this fails, there is no better error message we can give, so allow it to not be catched
+    let ruleBodyString : string = fs.readFileSync(filepath, { encoding: encoding, flag: 'r' });
+
+    //If this fails, we may be able to give a better error message than what this provides. Look at TODO above.
+    let ruleBody : ICloudWatchLogsV1RuleBody = JSON.parse(ruleBodyString);
+
+    ruleBody = this.setRuleBodyDefaults(ruleBody);
+    this.validateRuleBody(ruleBody);
+    return JSON.stringify(ruleBody);
+  }
+
+  private static readonly MAX_KEYS: number = 4;
+  private static readonly MIN_KEYS: number = 0;
+  private static readonly SCHEMA: IInsightsRuleSchema = { name: 'CloudWatchLogs', version: 1 };
+  private static readonly MAX_FILTERS: number = 4;
+
+  /**
+   * Validates that the rule body conforms to the restrictions of a version 1 CloudWatch logs rule body.
+   * If it does not, it throws an error. Otherwise, nothing happens.
+   * @param ruleBody interface that describes the rule body
+   * @private
+   */
+  private static validateRuleBody(ruleBody: ICloudWatchLogsV1RuleBody): void {
+    //validating the rule proper for a proper schema
+    if (ruleBody.schema != this.SCHEMA) {
+      throw new Error(`A version 1 CloudWatch Log rule body can only have a schema ${this.SCHEMA}, but ${ruleBody.schema} ` +
+        'was given');
+    }
+
+    //validating the rule body for proper amount of keys
+    if (ruleBody.contribution.keys.length > this.MAX_KEYS || ruleBody.contribution.keys.length < this.MIN_KEYS) {
+      throw new Error(`A version 1 CloudWatch Log Rule body can have between ${this.MIN_KEYS} to ${this.MAX_KEYS} keys, but `+
+          `${ruleBody.contribution.keys.length} was given.`);
+    }
+
+    //validating the rule body for proper amount of filters, if given
+    if (ruleBody.contribution.filters && ruleBody.contribution.filters.length > this.MAX_FILTERS) {
+      throw new Error(`A version 1 CloudWatch Log Rule body can up to ${this.MAX_FILTERS} , but `+
+          `${ruleBody.contribution.keys.length} was given.`);
+    }
+  }
+
+  /**
+   * Sets the defaults as needed for a given version 1 CloudWatch logs rule body
+   * @param ruleBody interface that describes the rule body
+   * @private
+   */
+  private static setRuleBodyDefaults(ruleBody: ICloudWatchLogsV1RuleBody): ICloudWatchLogsV1RuleBody {
+    /**
+     * If a log format is given, it will be used.
+     * Otherwise, if Fields has a value, CLF will be chosen. Else, JSON will be chosen.
+     */
+    ruleBody.logFormat = ruleBody.logFormat || (ruleBody.fields? InsightsRuleLogFormats.CLF : InsightsRuleLogFormats.JSON);
+
+    /**
+     * If a schema is given, even if it is wrong (it'll be caught in validateRuleBody), it will be used.
+     * TODO: It might just be better to always set it to the proper schema regardless of what a user inputs
+     * Otherwise, this rule body's schema will be given.
+     */
+    ruleBody.schema = ruleBody.schema || this.SCHEMA;
+
+    /**
+     * For aggregate on, if a value is given, it will be used (even if it doesn't make sense).
+     * Otherwise, if a value if NOT given, if valueOf is defined, SUM will be chosen (as the valueOf parameter only makes
+     * sense to set it SUM is chosen for AggregateOn). Otherwise, COUNT is chosen.
+     */
+    ruleBody.aggregateOn = ruleBody.aggregateOn ||
+        (ruleBody.contribution.valueOf ? InsightsRuleAggregates.SUM : InsightsRuleAggregates.COUNT);
+
+    return ruleBody;
   }
 
 }
