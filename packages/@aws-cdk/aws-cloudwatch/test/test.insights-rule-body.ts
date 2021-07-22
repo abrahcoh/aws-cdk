@@ -1,10 +1,10 @@
 import { Test } from 'nodeunit';
 import {
+  CloudWatchLogsV1RuleBody,
   InsightsRuleBodyFilter,
   InsightsRuleBodyFilterBuilder,
   InsightsRuleBodyFilterOperations,
   InsightsRuleBodyFilterStatistics,
-  CloudWatchLogsV1RuleBody,
 } from '../lib';
 
 //for filters
@@ -164,22 +164,197 @@ export = {
   },
 
   /** Testing CloudWatchV1LogRuleBodys **/
-  'In Insights-Rule-Body, basic version 1 CloudWatch log rule'(test: Test) {
+  'In Insights-Rule-Body, throws if bad schema for CloudWatchLogs version 1 rule body'(test: Test) {
 
-    test.equal(CloudWatchLogsV1RuleBody.fromRuleBody(
-      {
-        logGroups: ['a'],
-        contribution: {
-          keys: ['sdf'],
+    test.throws(() => {
+      CloudWatchLogsV1RuleBody.fromRuleBody({
+        schema: {
+          name: 'A very bad schema',
+          version: -1,
         },
-      },
-    ), JSON.stringify({
-      logGroups: ['me'],
+        logGroups: ['loggy'],
+        contribution: {
+          keys: ['1', '2', '3', '4', 'OH_NO!'],
+        },
+      });
+    });
+
+    test.done();
+  },
+
+  'In Insights-Rule-Body, throws if too many keys for CloudWatchLogs version 1 rule body'(test: Test) {
+
+    test.throws(() => {
+      CloudWatchLogsV1RuleBody.fromRuleBody({
+        logGroups: ['loggy'],
+        contribution: {
+          keys: ['1', '2', '3', '4', 'OH_NO!'],
+        },
+      });
+    });
+
+    test.done();
+  },
+
+  'In Insights-Rule-Body, throws if too many filters for CloudWatchLogs version 1 rule body'(test: Test) {
+
+    test.throws(() => {
+      CloudWatchLogsV1RuleBody.fromRuleBody({
+        logGroups: ['loggy'],
+        contribution: {
+          keys: ['the key!'],
+          filters: [
+            InsightsRuleBodyFilter.fromFilter(
+              new InsightsRuleBodyFilterBuilder('1').greaterThan(0).toFilter(),
+            ),
+            InsightsRuleBodyFilter.fromFilter(
+              new InsightsRuleBodyFilterBuilder('2').greaterThan(0).toFilter(),
+            ),
+            InsightsRuleBodyFilter.fromFilter(
+              new InsightsRuleBodyFilterBuilder('3').greaterThan(0).toFilter(),
+            ),
+            InsightsRuleBodyFilter.fromFilter(
+              new InsightsRuleBodyFilterBuilder('4').greaterThan(0).toFilter(),
+            ),
+            InsightsRuleBodyFilter.fromFilter(
+              new InsightsRuleBodyFilterBuilder('5').greaterThan(0).toFilter(),
+            ),
+          ],
+        },
+      });
+    });
+
+    test.done();
+  },
+
+  'In Insights-Rule-Body, basic version 1 CloudWatch log rule. Testing for schema and format defaults'(test: Test) {
+
+    let actualRuleBody = JSON.parse(CloudWatchLogsV1RuleBody.fromRuleBody({
+      logGroups: ['loggy'],
       contribution: {
-        keys: ['s'],
-        valueOf: 's',
+        keys: ['the key!'],
       },
     }));
+
+    let expectedRuleBody = {
+      schema: {
+        name: 'CloudWatchLogs',
+        version: 1,
+      },
+      logGroups: ['loggy'],
+      logFormat: 'JSON',
+      contribution: {
+        keys: ['the key!'],
+      },
+      aggregateOn: 'Count',
+    };
+    test.deepEqual(actualRuleBody, expectedRuleBody);
+
+    test.done();
+  },
+
+  'In Insights-Rule-Body, basic version 1 CloudWatch log rule with CLF. Testing for schema and format defaults'(test: Test) {
+
+    let actualRuleBody = JSON.parse(CloudWatchLogsV1RuleBody.fromRuleBody({
+      logGroups: ['loggy'],
+      fields: {
+        1: 'bytes',
+      },
+      contribution: {
+        keys: ['the key!'],
+      },
+    }));
+
+    let expectedRuleBody = {
+      schema: {
+        name: 'CloudWatchLogs',
+        version: 1,
+      },
+      fields: {
+        1: 'bytes',
+      },
+      logGroups: ['loggy'],
+      logFormat: 'CLF',
+      contribution: {
+        keys: ['the key!'],
+      },
+      aggregateOn: 'Count',
+    };
+    test.deepEqual(actualRuleBody, expectedRuleBody);
+
+    test.done();
+  },
+
+  'In Insights-Rule-Body, testing that SUM is inferred from defined valueOf field'(test: Test) {
+
+    let actualRuleBody = JSON.parse(CloudWatchLogsV1RuleBody.fromRuleBody({
+      logGroups: ['loggy'],
+      contribution: {
+        keys: ['the key!'],
+        valueof: 'fails',
+      },
+    }));
+
+    let expectedRuleBody = {
+      schema: {
+        name: 'CloudWatchLogs',
+        version: 1,
+      },
+      logGroups: ['loggy'],
+      logFormat: 'JSON',
+      contribution: {
+        keys: ['the key!'],
+        valueof: 'fails',
+      },
+      aggregateOn: 'Sum',
+    };
+    test.deepEqual(actualRuleBody, expectedRuleBody);
+
+    test.done();
+  },
+
+  'In Insights-Rule-Body, Testing complex JSON rule'(test: Test) {
+
+    let actualRuleBody = JSON.parse(CloudWatchLogsV1RuleBody.fromRuleBody({
+      logGroups: ['loggy', 'loggy2', 'loggy3'],
+      contribution: {
+        keys: ['key1', 'key2', 'key3', 'key4'],
+        valueof: 'fails',
+        filters: [
+          InsightsRuleBodyFilter.fromFilter(
+            {
+              filterMatch: '$.httpMethod',
+              filterOperand: ['PUT'],
+              filterOperation: InsightsRuleBodyFilterOperations.IN,
+              filterIgnoreCase: true,
+            },
+          ),
+          InsightsRuleBodyFilter.fromFilter(
+            new InsightsRuleBodyFilterBuilder('$.BytesRecieved').greaterThan(0)
+              .statistic(InsightsRuleBodyFilterStatistics.SUM),
+          ),
+        ],
+      },
+    }));
+
+    let expectedRuleBody = {
+      schema: {
+        name: 'CloudWatchLogs',
+        version: 1,
+      },
+      logGroups: ['loggy', 'loggy2', 'loggy3'],
+      logFormat: 'JSON',
+      contribution: {
+        keys: ['key1', 'key2', 'key3', 'key4'],
+        valueof: 'fails',
+        filters: [
+          { Match: '$.httpMethod', In: ['PUT'], IgnoreCase: true },
+          { Match: '$.BytesRecieved', GreaterThan: 0, Statistic: 'Sum' },
+        ],
+      },
+      aggregateOn: 'Sum',
+    };
+    test.deepEqual(actualRuleBody, expectedRuleBody);
 
     test.done();
   },

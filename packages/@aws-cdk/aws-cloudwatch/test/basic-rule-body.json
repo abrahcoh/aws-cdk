@@ -1,0 +1,26 @@
+{
+  "Schema": {
+    "Name": "CloudWatchLogRule",
+    "Version": 1
+  },
+  "LogGroupNames": [
+    "API-Gateway-Access-Logs*",
+    "Log-group-name2"
+  ],
+  "LogFormat": "JSON",
+  "Contribution": {
+    "Keys": [
+      "$.ip"
+    ],
+    "ValueOf": "$.requestBytes",
+    "Filters": [
+      {
+        "Match": "$.httpMethod",
+        "In": [
+          "PUT"
+        ]
+      }
+    ]
+  },
+  "AggregateOn": "Sum"
+}

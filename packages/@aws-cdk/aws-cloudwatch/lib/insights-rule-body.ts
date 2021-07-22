@@ -308,9 +308,11 @@ export interface IInsightsRuleContribution {
    * Specify this only when specifying SUM as AggregateOn and for log fields with numerical values. Used to sort
    * contributors by the sum of the values of their fields in valueOf
    *
+   * Also, this is not camelcase, as 'valueOf?' for some reasons gives a compiler error that I cannot find online
+   *
    * @default - none, no contributor sorting will occur
    */
-  valueOf?: string,
+  valueof?: string,
 
   /**
    * Array up to four filters to narrow the log events that are included in the report
@@ -504,7 +506,7 @@ export class CloudWatchLogsV1RuleBody {
      * sense to set it SUM is chosen for AggregateOn). Otherwise, COUNT is chosen.
      */
     ruleBody.aggregateOn = ruleBody.aggregateOn ||
-        (ruleBody.contribution.valueOf ? InsightsRuleAggregates.SUM : InsightsRuleAggregates.COUNT);
+        (ruleBody.contribution.valueof ? InsightsRuleAggregates.SUM : InsightsRuleAggregates.COUNT);
 
     return ruleBody;
   }
