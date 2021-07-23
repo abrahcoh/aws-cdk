@@ -172,7 +172,7 @@ export = {
           name: 'A very bad schema',
           version: -1,
         },
-        logGroups: ['loggy'],
+        logGroupNames: ['loggy'],
         contribution: {
           keys: ['1', '2', '3', '4', 'OH_NO!'],
         },
@@ -186,7 +186,7 @@ export = {
 
     test.throws(() => {
       CloudWatchLogsV1RuleBody.fromRuleBody({
-        logGroups: ['loggy'],
+        logGroupNames: ['loggy'],
         contribution: {
           keys: ['1', '2', '3', '4', 'OH_NO!'],
         },
@@ -200,7 +200,7 @@ export = {
 
     test.throws(() => {
       CloudWatchLogsV1RuleBody.fromRuleBody({
-        logGroups: ['loggy'],
+        logGroupNames: ['loggy'],
         contribution: {
           keys: ['the key!'],
           filters: [
@@ -230,23 +230,24 @@ export = {
   'In Insights-Rule-Body, basic version 1 CloudWatch log rule. Testing for schema and format defaults'(test: Test) {
 
     let actualRuleBody = JSON.parse(CloudWatchLogsV1RuleBody.fromRuleBody({
-      logGroups: ['loggy'],
+      logGroupNames: ['loggy'],
       contribution: {
         keys: ['the key!'],
       },
     }));
 
     let expectedRuleBody = {
-      schema: {
-        name: 'CloudWatchLogs',
-        version: 1,
+      Schema: {
+        Name: 'CloudWatchLogRule',
+        Version: 1,
       },
-      logGroups: ['loggy'],
-      logFormat: 'JSON',
-      contribution: {
-        keys: ['the key!'],
+      LogGroupNames: ['loggy'],
+      LogFormat: 'JSON',
+      Contribution: {
+        Keys: ['the key!'],
+        Filters: [],
       },
-      aggregateOn: 'Count',
+      AggregateOn: 'Count',
     };
     test.deepEqual(actualRuleBody, expectedRuleBody);
 
@@ -256,7 +257,7 @@ export = {
   'In Insights-Rule-Body, basic version 1 CloudWatch log rule with CLF. Testing for schema and format defaults'(test: Test) {
 
     let actualRuleBody = JSON.parse(CloudWatchLogsV1RuleBody.fromRuleBody({
-      logGroups: ['loggy'],
+      logGroupNames: ['loggy'],
       fields: {
         1: 'bytes',
       },
@@ -266,19 +267,20 @@ export = {
     }));
 
     let expectedRuleBody = {
-      schema: {
-        name: 'CloudWatchLogs',
-        version: 1,
+      Schema: {
+        Name: 'CloudWatchLogRule',
+        Version: 1,
       },
-      fields: {
+      Fields: {
         1: 'bytes',
       },
-      logGroups: ['loggy'],
-      logFormat: 'CLF',
-      contribution: {
-        keys: ['the key!'],
+      LogGroupNames: ['loggy'],
+      LogFormat: 'CLF',
+      Contribution: {
+        Keys: ['the key!'],
+        Filters: [],
       },
-      aggregateOn: 'Count',
+      AggregateOn: 'Count',
     };
     test.deepEqual(actualRuleBody, expectedRuleBody);
 
@@ -288,7 +290,7 @@ export = {
   'In Insights-Rule-Body, testing that SUM is inferred from defined valueOf field'(test: Test) {
 
     let actualRuleBody = JSON.parse(CloudWatchLogsV1RuleBody.fromRuleBody({
-      logGroups: ['loggy'],
+      logGroupNames: ['loggy'],
       contribution: {
         keys: ['the key!'],
         valueof: 'fails',
@@ -296,17 +298,18 @@ export = {
     }));
 
     let expectedRuleBody = {
-      schema: {
-        name: 'CloudWatchLogs',
-        version: 1,
+      Schema: {
+        Name: 'CloudWatchLogRule',
+        Version: 1,
       },
-      logGroups: ['loggy'],
-      logFormat: 'JSON',
-      contribution: {
-        keys: ['the key!'],
-        valueof: 'fails',
+      LogGroupNames: ['loggy'],
+      LogFormat: 'JSON',
+      Contribution: {
+        Keys: ['the key!'],
+        ValueOf: 'fails',
+        Filters: [],
       },
-      aggregateOn: 'Sum',
+      AggregateOn: 'Sum',
     };
     test.deepEqual(actualRuleBody, expectedRuleBody);
 
@@ -316,7 +319,7 @@ export = {
   'In Insights-Rule-Body, Testing complex JSON rule'(test: Test) {
 
     let actualRuleBody = JSON.parse(CloudWatchLogsV1RuleBody.fromRuleBody({
-      logGroups: ['loggy', 'loggy2', 'loggy3'],
+      logGroupNames: ['loggy', 'loggy2', 'loggy3'],
       contribution: {
         keys: ['key1', 'key2', 'key3', 'key4'],
         valueof: 'fails',
@@ -329,6 +332,8 @@ export = {
               filterIgnoreCase: true,
             },
           ),
+
+
           InsightsRuleBodyFilter.fromFilter(
             new InsightsRuleBodyFilterBuilder('$.BytesRecieved').greaterThan(0)
               .statistic(InsightsRuleBodyFilterStatistics.SUM),
@@ -338,21 +343,56 @@ export = {
     }));
 
     let expectedRuleBody = {
-      schema: {
-        name: 'CloudWatchLogs',
-        version: 1,
+      Schema: {
+        Name: 'CloudWatchLogRule',
+        Version: 1,
       },
-      logGroups: ['loggy', 'loggy2', 'loggy3'],
-      logFormat: 'JSON',
-      contribution: {
-        keys: ['key1', 'key2', 'key3', 'key4'],
-        valueof: 'fails',
-        filters: [
+      LogGroupNames: ['loggy', 'loggy2', 'loggy3'],
+      LogFormat: 'JSON',
+      Contribution: {
+        Keys: ['key1', 'key2', 'key3', 'key4'],
+        ValueOf: 'fails',
+        Filters: [
           { Match: '$.httpMethod', In: ['PUT'], IgnoreCase: true },
           { Match: '$.BytesRecieved', GreaterThan: 0, Statistic: 'Sum' },
         ],
       },
-      aggregateOn: 'Sum',
+      AggregateOn: 'Sum',
+    };
+    test.deepEqual(actualRuleBody, expectedRuleBody);
+
+    test.done();
+  },
+
+  'In Insights-Rule-Body, testing integ rule'(test: Test) {
+
+    let actualRuleBody = JSON.parse(CloudWatchLogsV1RuleBody.fromRuleBody({
+      fields: { 1: 'requestId' },
+      logGroupNames: ['/aws/lambda/*'],
+      contribution: {
+        keys: ['requestId'],
+      },
+    }));
+
+    let expectedRuleBody = {
+      Schema: {
+        Name: 'CloudWatchLogRule',
+        Version: 1,
+      },
+      AggregateOn: 'Count',
+      Contribution: {
+        Keys: [
+          'requestId',
+        ],
+        Filters: [],
+      },
+      LogFormat: 'CLF',
+      LogGroupNames: [
+        '/aws/lambda/*',
+      ],
+      Fields: {
+        1: 'requestId',
+      },
     };
     test.deepEqual(actualRuleBody, expectedRuleBody);
 

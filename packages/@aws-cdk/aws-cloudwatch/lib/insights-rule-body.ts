@@ -77,6 +77,7 @@ export enum InsightsRuleBodyFilterStatistics {
  * Properties of an Insights Rule Filter
  */
 export interface IInsightsRuleBodyFilter {
+
   /**
      * Field of the log data the filter will act upon
      */
@@ -308,7 +309,8 @@ export interface IInsightsRuleContribution {
    * Specify this only when specifying SUM as AggregateOn and for log fields with numerical values. Used to sort
    * contributors by the sum of the values of their fields in valueOf
    *
-   * Also, this is not camelcase, as 'valueOf?' for some reasons gives a compiler error that I cannot find online
+   * Also, this is not camelcase, as 'valueOf?' for some reasons gives a compiler error that I cannot find online. May be
+   * a typescript keyword
    *
    * @default - none, no contributor sorting will occur
    */
@@ -371,9 +373,13 @@ export enum InsightsRuleLogFormats {
 /**
  * Common properties to all Insights Rule Bodies (besides string rule bodies)
  */
-export interface IInsightsRuleBody {
+interface IInsightsRuleBody {
   /**
    * Defines the name and version of the rule body schema
+   *
+   * All rule bodies must provide a default for this. For example, in version 1 CloudWatch logs rule bodes
+   * this defaults to { Name: "CloudWatchLogs", Version: 1}
+   * @default - whatever is provided by the rule body importation class
    */
   schema?: IInsightsRuleSchema,
 
@@ -395,8 +401,10 @@ export interface ICloudWatchLogsV1RuleBody extends IInsightsRuleBody{
 
   /**
    * Defines the log groups the rule will pull data from
+   * NOTE: This ideally would include LogGroup constructs; however, this requires us to include the
+   * aws-logs package, which includes the aws-cloudwatch package, which causes a dependecy cycle.
    */
-  logGroups: string[],
+  logGroupNames: string[],
 
   /**
    * Defines the format of the log group data
@@ -407,6 +415,9 @@ export interface ICloudWatchLogsV1RuleBody extends IInsightsRuleBody{
 
   /**
    * Defines the aliases for log keys for CLF formatted log groups
+   *
+   * @default - none, if the format is CLF there will be no aliases available for one's keys if CLF
+   *  else, if JSON format, this has no effect.
    */
   fields?: {[index: string] : string}
 }
@@ -423,8 +434,9 @@ export class CloudWatchLogsV1RuleBody {
   public static fromRuleBody(ruleBody: ICloudWatchLogsV1RuleBody): string {
     ruleBody = this.setRuleBodyDefaults(ruleBody);
     this.validateRuleBody(ruleBody);
+
     return JSON.stringify(
-      dropUndefined(ruleBody),
+      this.allKeysToPascalCase(dropUndefined(ruleBody)),
     );
   }
 
@@ -443,16 +455,24 @@ export class CloudWatchLogsV1RuleBody {
     let ruleBodyString : string = fs.readFileSync(filepath, { encoding: encoding, flag: 'r' });
 
     //If this fails, we may be able to give a better error message than what this provides. Look at TODO above.
+    /**
+     * This has two possibilities of failures:
+     * 1) From JSON.parse(...): The string provided is not valid JSON. If this passes, it's valid JSON
+     * 2) From "ruleBody : ICloudWatchLogsV1RuleBody": The JSON object cannot be cast into a version 1 CW log rule body
+     * If the above passes, it has all the correct and needed fields.
+     *
+     * See the note about about inquiring on try/catch to provide better error messages
+     */
     let ruleBody : ICloudWatchLogsV1RuleBody = JSON.parse(ruleBodyString);
 
     ruleBody = this.setRuleBodyDefaults(ruleBody);
     this.validateRuleBody(ruleBody);
-    return JSON.stringify(ruleBody);
+    return JSON.stringify(this.allKeysToPascalCase(ruleBody));
   }
 
   private static readonly MAX_KEYS: number = 4;
   private static readonly MIN_KEYS: number = 0;
-  private static readonly SCHEMA: IInsightsRuleSchema = { name: 'CloudWatchLogs', version: 1 };
+  private static readonly SCHEMA: IInsightsRuleSchema = { name: 'CloudWatchLogRule', version: 1 };
   private static readonly MAX_FILTERS: number = 4;
 
   /**
@@ -487,6 +507,7 @@ export class CloudWatchLogsV1RuleBody {
    * @private
    */
   private static setRuleBodyDefaults(ruleBody: ICloudWatchLogsV1RuleBody): ICloudWatchLogsV1RuleBody {
+
     /**
      * If a log format is given, it will be used.
      * Otherwise, if Fields has a value, CLF will be chosen. Else, JSON will be chosen.
@@ -508,7 +529,37 @@ export class CloudWatchLogsV1RuleBody {
     ruleBody.aggregateOn = ruleBody.aggregateOn ||
         (ruleBody.contribution.valueof ? InsightsRuleAggregates.SUM : InsightsRuleAggregates.COUNT);
 
+    /**
+     * Cloudformation will scream if we do not include an empty [] for filters if there are none
+     */
+    ruleBody.contribution.filters = ruleBody.contribution.filters || [];
+
     return ruleBody;
   }
 
+  /**
+   * Makes all the keys of a version 1 CloudWatch rule body PascalCase
+   *
+   * Doing this manually and non-generically was chosen, as a generic version would involve recursion
+   * which isn't good for production.
+   * @param ruleBody rule body that will have pascal case keys
+   * @private
+   */
+  private static allKeysToPascalCase(ruleBody: ICloudWatchLogsV1RuleBody): any {
+    return {
+      Schema: {
+        Name: ruleBody.schema?.name,
+        Version: ruleBody.schema?.version,
+      },
+      LogGroupNames: ruleBody.logGroupNames,
+      LogFormat: ruleBody.logFormat,
+      Fields: ruleBody.fields,
+      Contribution: {
+        Keys: ruleBody.contribution.keys,
+        ValueOf: ruleBody.contribution.valueof,
+        Filters: ruleBody.contribution.filters,
+      },
+      AggregateOn: ruleBody.aggregateOn,
+    };
+  }
 }
