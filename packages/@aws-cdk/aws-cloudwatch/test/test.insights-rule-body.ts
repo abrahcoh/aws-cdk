@@ -1,40 +1,28 @@
 import { Test } from 'nodeunit';
 import {
-  CloudWatchLogsV1RuleBody,
-  InsightsRuleBodyFilter,
-  InsightsRuleBodyFilterBuilder,
-  InsightsRuleBodyFilterOperations,
-  InsightsRuleBodyFilterStatistics,
+  CloudWatchLogsV1Filter,
+  CloudWatchLogsV1FilterOperationFunctions, CloudWatchLogsV1RuleBody,
 } from '../lib';
 
 //for filters
 const basicTextFilter = { Match: '$.httpMethod', In: ['PUT'] };
-const basicTextFilterIgnoreCase = { Match: '$.httpMethod', In: ['PUT'], IgnoreCase: true };
 const basicNumericalFilter = { Match: '$.BytesRecieved', GreaterThan: 0 };
-const basicNumericalFilterAverage = { Match: '$.BytesRecieved', GreaterThan: 0, Statistic: 'Average' };
 
 
 export = {
 
   /** Testing filters **/
 
-  'In Insights-Rule-Body, filter does not work without filterOperation method'(test: Test) {
-
-    test.throws(() => {
-      InsightsRuleBodyFilter.fromFilter(
-        new InsightsRuleBodyFilterBuilder('$.httpMethod').toFilter());
-    },
-    );
-
-    test.done();
-  },
 
   'In Insights-Rule-Body, basic text filter DOES NOT pass using filter builder when input is over max length '(test: Test) {
 
     test.throws(() => {
-      InsightsRuleBodyFilter.fromFilter(
-        new InsightsRuleBodyFilterBuilder('$.httpMethod')
-          .in(['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11']).toFilter());
+      CloudWatchLogsV1Filter.fromFilter(
+        {
+          match: 'anything',
+          operationAndInput: CloudWatchLogsV1FilterOperationFunctions
+            .in('1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11'),
+        });
     },
     );
 
@@ -44,8 +32,12 @@ export = {
   'In Insights-Rule-Body, basic text filter DOES NOT pass using filter interface when input is empty array '(test: Test) {
 
     test.throws(() => {
-      InsightsRuleBodyFilter.fromFilter(
-        new InsightsRuleBodyFilterBuilder('$.httpMethod').in([]).toFilter());
+      CloudWatchLogsV1Filter.fromFilter(
+        {
+          match: 'anything',
+          operationAndInput: CloudWatchLogsV1FilterOperationFunctions
+            .in(),
+        });
     },
     );
 
@@ -55,10 +47,11 @@ export = {
   'In Insights-Rule-Body, basic text filter passes using filter interface'(test: Test) {
 
     test.equal(JSON.stringify(
-      InsightsRuleBodyFilter.fromFilter({
-        filterMatch: '$.httpMethod',
-        filterOperation: InsightsRuleBodyFilterOperations.IN,
-        filterOperand: ['PUT'],
+      CloudWatchLogsV1Filter.fromFilter({
+        match: '$.httpMethod',
+        operationAndInput: {
+          In: ['PUT'],
+        },
       })),
     //expected
     JSON.stringify(basicTextFilter));
@@ -66,28 +59,15 @@ export = {
     test.done();
   },
 
-  'In Insights-Rule-Body, basic text filter with ignore case passes using filter interface'(test: Test) {
-
-    test.equal(JSON.stringify(
-      InsightsRuleBodyFilter.fromFilter({
-        filterMatch: '$.httpMethod',
-        filterOperation: InsightsRuleBodyFilterOperations.IN,
-        filterOperand: ['PUT'],
-        filterIgnoreCase: true,
-      })),
-    //expected
-    JSON.stringify(basicTextFilterIgnoreCase));
-
-    test.done();
-  },
 
   'In Insights-Rule-Body, basic numerical filter passes using filter interface'(test: Test) {
 
     test.equal(JSON.stringify(
-      InsightsRuleBodyFilter.fromFilter({
-        filterMatch: '$.BytesRecieved',
-        filterOperation: InsightsRuleBodyFilterOperations.GREATER_THAN,
-        filterOperand: 0,
+      CloudWatchLogsV1Filter.fromFilter({
+        match: '$.BytesRecieved',
+        operationAndInput: {
+          GreaterThan: 0,
+        },
       })),
     //expected
     JSON.stringify(basicNumericalFilter));
@@ -95,53 +75,27 @@ export = {
     test.done();
   },
 
-  'In Insights-Rule-Body, basic numerical filter with statistic passes using filter interface'(test: Test) {
+  'In Insights-Rule-Body, basic text filter passes using operation methods'(test: Test) {
 
     test.equal(JSON.stringify(
-      InsightsRuleBodyFilter.fromFilter({
-        filterMatch: '$.BytesRecieved',
-        filterOperation: InsightsRuleBodyFilterOperations.GREATER_THAN,
-        filterOperand: 0,
-        filterStatistic: InsightsRuleBodyFilterStatistics.AVERAGE,
-      })),
-    //expected
-    JSON.stringify(basicNumericalFilterAverage));
-
-    test.done();
-  },
-
-  'In Insights-Rule-Body, basic text filter passes using filter builder'(test: Test) {
-
-    let filter = new InsightsRuleBodyFilterBuilder('$.httpMethod').in(['PUT']).toFilter();
-
-    test.equal(JSON.stringify(
-      InsightsRuleBodyFilter.fromFilter(filter),
+      CloudWatchLogsV1Filter.fromFilter({
+        match: '$.httpMethod',
+        operationAndInput: CloudWatchLogsV1FilterOperationFunctions.in('PUT'),
+      }),
     ),
     //expected
     JSON.stringify(basicTextFilter));
-
-    test.done();
-  },
-
-  'In Insights-Rule-Body, basic text filter with ignore case passes using filter builder'(test: Test) {
-
-    let filter = new InsightsRuleBodyFilterBuilder('$.httpMethod').in(['PUT']).ignoreCase(true).toFilter();
-
-    test.equal(JSON.stringify(
-      InsightsRuleBodyFilter.fromFilter(filter),
-    ),
-    //expected
-    JSON.stringify(basicTextFilterIgnoreCase));
 
     test.done();
   },
 
   'In Insights-Rule-Body, basic numerical filter passes using filter builder'(test: Test) {
 
-    let filter = new InsightsRuleBodyFilterBuilder('$.BytesRecieved').greaterThan(0).toFilter();
-
     test.equal(JSON.stringify(
-      InsightsRuleBodyFilter.fromFilter(filter),
+      CloudWatchLogsV1Filter.fromFilter({
+        match: '$.BytesRecieved',
+        operationAndInput: CloudWatchLogsV1FilterOperationFunctions.greaterThan(0),
+      }),
     ),
     //expected
     JSON.stringify(basicNumericalFilter));
@@ -149,19 +103,6 @@ export = {
     test.done();
   },
 
-  'In Insights-Rule-Body, basic numerical filter passes with statistic using filter builder'(test: Test) {
-
-    let filter = new InsightsRuleBodyFilterBuilder('$.BytesRecieved').greaterThan(0)
-      .statistic(InsightsRuleBodyFilterStatistics.AVERAGE).toFilter();
-
-    test.equal(JSON.stringify(
-      InsightsRuleBodyFilter.fromFilter(filter),
-    ),
-    //expected
-    JSON.stringify(basicNumericalFilterAverage));
-
-    test.done();
-  },
 
   /** Testing CloudWatchV1LogRuleBodys **/
   'In Insights-Rule-Body, throws if bad schema for CloudWatchLogs version 1 rule body'(test: Test) {
@@ -203,23 +144,28 @@ export = {
         logGroupNames: ['loggy'],
         contribution: {
           keys: ['the key!'],
-          filters: [
-            InsightsRuleBodyFilter.fromFilter(
-              new InsightsRuleBodyFilterBuilder('1').greaterThan(0).toFilter(),
-            ),
-            InsightsRuleBodyFilter.fromFilter(
-              new InsightsRuleBodyFilterBuilder('2').greaterThan(0).toFilter(),
-            ),
-            InsightsRuleBodyFilter.fromFilter(
-              new InsightsRuleBodyFilterBuilder('3').greaterThan(0).toFilter(),
-            ),
-            InsightsRuleBodyFilter.fromFilter(
-              new InsightsRuleBodyFilterBuilder('4').greaterThan(0).toFilter(),
-            ),
-            InsightsRuleBodyFilter.fromFilter(
-              new InsightsRuleBodyFilterBuilder('5').greaterThan(0).toFilter(),
-            ),
-          ],
+          filters: CloudWatchLogsV1Filter.allOf(
+            {
+              match: 'asd',
+              operationAndInput: CloudWatchLogsV1FilterOperationFunctions.startsWith('me'),
+            },
+            {
+              match: 'asd',
+              operationAndInput: CloudWatchLogsV1FilterOperationFunctions.startsWith('me'),
+            },
+            {
+              match: 'asd',
+              operationAndInput: CloudWatchLogsV1FilterOperationFunctions.startsWith('me'),
+            },
+            {
+              match: 'asd',
+              operationAndInput: CloudWatchLogsV1FilterOperationFunctions.startsWith('me'),
+            },
+            {
+              match: 'asd',
+              operationAndInput: CloudWatchLogsV1FilterOperationFunctions.startsWith('me'),
+            },
+          ),
         },
       });
     });
@@ -323,22 +269,16 @@ export = {
       contribution: {
         keys: ['key1', 'key2', 'key3', 'key4'],
         valueof: 'fails',
-        filters: [
-          InsightsRuleBodyFilter.fromFilter(
-            {
-              filterMatch: '$.httpMethod',
-              filterOperand: ['PUT'],
-              filterOperation: InsightsRuleBodyFilterOperations.IN,
-              filterIgnoreCase: true,
-            },
-          ),
-
-
-          InsightsRuleBodyFilter.fromFilter(
-            new InsightsRuleBodyFilterBuilder('$.BytesRecieved').greaterThan(0)
-              .statistic(InsightsRuleBodyFilterStatistics.SUM),
-          ),
-        ],
+        filters: CloudWatchLogsV1Filter.allOf(
+          {
+            match: '$.httpMethod',
+            operationAndInput: CloudWatchLogsV1FilterOperationFunctions.in('PUT'),
+          },
+          {
+            match: '$.BytesRecieved',
+            operationAndInput: CloudWatchLogsV1FilterOperationFunctions.greaterThan(0),
+          },
+        ),
       },
     }));
 
@@ -353,8 +293,8 @@ export = {
         Keys: ['key1', 'key2', 'key3', 'key4'],
         ValueOf: 'fails',
         Filters: [
-          { Match: '$.httpMethod', In: ['PUT'], IgnoreCase: true },
-          { Match: '$.BytesRecieved', GreaterThan: 0, Statistic: 'Sum' },
+          { Match: '$.httpMethod', In: ['PUT'] },
+          { Match: '$.BytesRecieved', GreaterThan: 0 },
         ],
       },
       AggregateOn: 'Sum',

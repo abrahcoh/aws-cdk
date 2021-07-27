@@ -1,5 +1,5 @@
 import * as cdk from '@aws-cdk/core';
-import { InsightsRuleBodyFilter, InsightsRuleBodyFilterBuilder, InsightRule, CloudWatchLogsV1RuleBody } from '../lib';
+import { CloudWatchLogsV1Filter, InsightRule, CloudWatchLogsV1RuleBody, CloudWatchLogsV1FilterOperationFunctions } from '../lib';
 
 const app = new cdk.App();
 
@@ -24,9 +24,10 @@ new InsightRule(stack, 'myRadRule', {
       keys: ['$.requestId'],
       valueof: '$.BytesRecieved',
       filters: [
-        InsightsRuleBodyFilter.fromFilter(
-          new InsightsRuleBodyFilterBuilder('$.httpMethod').startsWith(['PUT']).toFilter(),
-        ),
+        CloudWatchLogsV1Filter.fromFilter({
+          match: '$.httpMethod',
+          operationAndInput: CloudWatchLogsV1FilterOperationFunctions.startsWith('PUT'),
+        }),
       ],
     },
   }),

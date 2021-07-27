@@ -4,7 +4,7 @@ import { dropUndefined } from './private/object';
 /**
  * All possible filter operations
  */
-export enum InsightsRuleBodyFilterOperations {
+enum InsightsRuleBodyFilterOperations {
 
   /**
    * Configures filter to check if match field is "IN" a set of strings
@@ -44,256 +44,208 @@ export enum InsightsRuleBodyFilterOperations {
   /**
    * Configures filter to check if a match field "IS_PRESENT" in a log stream
    */
-  IS_PRESENT = 'IsPresent',
-
-  /**
-   * For compilation purposes, do not use
-   */
-  UNDEFINED = 'UNDEFINED'
+  IS_PRESENT = 'IsPresent'
 }
 
 /**
- * All possible qualifiers to define the statistic of observation
+ * Defines the filter operation and input for an Insights Rule Body
+ *
+ * In every filter, there is a line that defines the operation and input like "In" : ['this', 'that', 'there'],
+ * where "In" is the operation and "['this', 'that', 'there']" is the operand.
+ *
+ * This type provides a convinient way of enforcing the operation for users creating filters
  */
-export enum InsightsRuleBodyFilterStatistics {
-  /**
-   * reflects the aggregated value of all occurences of a metric in an entry
-   */
-  SUM = 'Sum',
-
-  /**
-   * reflects the number of occurences for a given metric in the entry
-   */
-  COUNT = 'Count',
-
-  /**
-   * reflects the aggregated sum for the metric values in an entry divided by the number of occurences for the metrics in the
-   * same entry
-   */
-  AVERAGE = 'Average'
+export type InsightsRuleBodyFilterOperationAndInput = {
+  [operation : string]: string[] | number | boolean;
 }
 
 /**
- * Properties of an Insights Rule Filter
+ * Properties of an Insights Rule Filter, not exported as it is a base interface for other schema filter interfaces to inherit
  */
-export interface IInsightsRuleBodyFilter {
+interface IInsightsRuleBodyFilter {
 
   /**
      * Field of the log data the filter will act upon
      */
-  filterMatch: string;
+  match: string,
 
   /**
      * Filter operation chosen from InsightsRuleBodyFilterOperations
      */
-  filterOperation: InsightsRuleBodyFilterOperations;
-
-  /**
-     * Value that the filter operation will compare the match field against
-     * Currently, only number, string[], and boolean are valid data types for the filter operations
-     */
-  filterOperand: number | string[] | boolean;
-
-  /**
-     * Only activates if operand is a text type. If set, will ignore case when comparing match against operand
-     *
-     * @default - false, so will not ignore case
-     */
-  filterIgnoreCase?: boolean;
-
-  /**
-     * Determines how to treat metrics that occur multiple times
-     *
-     * @default - None, Will default to AVERAGE in CloudFormation
-     */
-  filterStatistic?: InsightsRuleBodyFilterStatistics;
+  operationAndInput: InsightsRuleBodyFilterOperationAndInput
 }
 
 /**
- * Used to create Filters via a builder interface
+ * Properties of a version 1 CloudWatchLogs Rule Body filter. It's the same as the base filter interface.
+ * Added for future flexibility and inheritance purposes
  */
-export class InsightsRuleBodyFilterBuilder implements IInsightsRuleBodyFilter {
-  private MAX_OPERAND_ARR_LEN = 10;
-  private MIN_OPERAND_ARR_LEN = 1;
-  private OPERAND_UNDEFINED = [];
-
-  public filterMatch: string;
-  public filterOperand: number | string[] | boolean;
-  public filterOperation: InsightsRuleBodyFilterOperations;
-  public filterIgnoreCase?: boolean;
-  public filterStatistic?: InsightsRuleBodyFilterStatistics;
-
-  constructor(match: string) {
-    this.filterMatch = match;
-
-    //these are only initialized to dummy values for compilation purposes
-    this.filterOperation = InsightsRuleBodyFilterOperations.UNDEFINED;
-    this.filterOperand = this.OPERAND_UNDEFINED;
-  }
-
-  /**
-   * Configures the filter builder to set the filter operation to "IN"
-   * @param operand the values the match field can be to satisfy the filter
-   */
-  public in(operand: string[]): InsightsRuleBodyFilterBuilder {
-    this.checkAndErrorIfBadOperand(operand);
-    this.filterOperation = InsightsRuleBodyFilterOperations.IN;
-    this.filterOperand = operand;
-
-    return this;
-  }
-
-  /**
-   * Configures the filter builder to set the filter operation to "NOT_IN"
-   * @param operand the values the match field cannot be to satisfy the filter
-   */
-  public notIn(operand: string[]): InsightsRuleBodyFilterBuilder {
-    this.checkAndErrorIfBadOperand(operand);
-    this.filterOperation = InsightsRuleBodyFilterOperations.NOT_IN;
-    this.filterOperand = operand;
-
-    return this;
-  }
-
-  /**
-   * Configures the filter builder to set the filter operation to "STARTS_WITH"
-   * @param operand the values the match field can start with to satisfy the fitler
-   */
-  public startsWith(operand: string[]): InsightsRuleBodyFilterBuilder {
-    this.checkAndErrorIfBadOperand(operand);
-    this.filterOperation = InsightsRuleBodyFilterOperations.STARTS_WITH;
-    this.filterOperand = operand;
-
-    return this;
-  }
-
-  /**
-   * Configures the filter builder to set the filter operation to "GREATER_THAN"
-   * @param operand the value the match field must be greater than to satisfy the filter
-   */
-  public greaterThan(operand: number): InsightsRuleBodyFilterBuilder {
-    this.filterOperation = InsightsRuleBodyFilterOperations.GREATER_THAN;
-    this.filterOperand = operand;
-
-    return this;
-  }
-
-  /**
-   * Configures the filter builder to set the filter operation to "LESS_THAN"
-   * @param operand the value the match field must be less than to satisfy the filter
-   */
-  public lessThan(operand: number): InsightsRuleBodyFilterBuilder {
-    this.filterOperation = InsightsRuleBodyFilterOperations.LESS_THAN;
-    this.filterOperand = operand;
-
-    return this;
-  }
-
-  /**
-   * Configures the filter builder to set the filter operation to "EQUAL_TO"
-   * @param operand the value the match field must be equal to to satisfy the filter
-   */
-  public equalTo(operand: number): InsightsRuleBodyFilterBuilder {
-    this.filterOperation = InsightsRuleBodyFilterOperations.EQUAL_TO;
-    this.filterOperand = operand;
-
-    return this;
-  }
-
-  /**
-   * Configures the filter builder to set the filter operation to "NOT_EQUAL_TO"
-   * @param operand the value the match field must not be equal to to satisfy the filter
-   */
-  public notEqualTo(operand: number): InsightsRuleBodyFilterBuilder {
-    this.filterOperation = InsightsRuleBodyFilterOperations.NOT_EQUAL_TO;
-    this.filterOperand = operand;
-
-    return this;
-  }
-
-  /**
-   * Configures the filter builder to set the filter operation to "IS_PRESENT"
-   * @param operand whether the match field needs to be present
-   */
-  public isPresent(operand: boolean): InsightsRuleBodyFilterBuilder {
-    this.filterOperation = InsightsRuleBodyFilterOperations.IS_PRESENT;
-    this.filterOperand = operand;
-
-    return this;
-  }
-
-
-  /**
-   * Configures the filter builder to set the filter to ignore case
-   * @param ignoreCase whether to ignore case
-   */
-  public ignoreCase(ignoreCase: boolean): InsightsRuleBodyFilterBuilder {
-    this.filterIgnoreCase = ignoreCase;
-
-    return this;
-  }
-
-  /**
-   * Configures the filter builder to set a statistic for the filter
-   * @param statistic the statistic for the filter
-   */
-  public statistic(statistic: InsightsRuleBodyFilterStatistics) {
-    this.filterStatistic = statistic;
-
-    return this;
-  }
-
-  /**
-   * Converts a filter builder to an IFilter
-   */
-  public toFilter(): IInsightsRuleBodyFilter {
-    if (this.filterOperation == InsightsRuleBodyFilterOperations.UNDEFINED) {
-      throw new Error(`Operation cannot be undefined but was given an operation of ${this.filterOperation} `+
-          `and an operand of ${this.filterOperand}. Must use operation method (.in, .startsWith, etc) before toFilter().`);
-    }
-
-    return dropUndefined({
-      filterMatch: this.filterMatch,
-      filterOperation: this.filterOperation,
-      filterOperand: this.filterOperand,
-      filterIgnoreCase: this.filterIgnoreCase,
-      filterStatistic: this.filterStatistic,
-    });
-  }
-
-  /**
-     * Currently, all string[] operands can only have a max length of 10. This checks if that is satisfied,
-     * otherwise, it will error out
-     * @param operand the value the match is compared against in the filter
-     * @private
-     */
-  private checkAndErrorIfBadOperand(operand: string[]) {
-    if (operand.length > this.MAX_OPERAND_ARR_LEN || operand.length < this.MIN_OPERAND_ARR_LEN) {
-      throw new Error(`Operand array has a max length of ${this.MAX_OPERAND_ARR_LEN} and a minimum length of `+
-        `${this.MAX_OPERAND_ARR_LEN} but given operand length was ${operand.length}`);
-    }
-  }
-
+export interface ICloudWatchLogV1RuleBodyFilter extends IInsightsRuleBodyFilter{
 }
 
 /**
- * Class that defines the static public APIs for adding filters to a rule body
+ * A base class that defines the common filter operations for all schemas
  */
-export class InsightsRuleBodyFilter {
+class InsightsRuleBodyFilterOperationFunctions {
 
   /**
-     * Converts a IInsightsRuleBodyFilter interface to filter JSON to be used in a rule body
-     * @param filter the filter interface one wishes to use in a rule body
-     */
-  public static fromFilter(filter: IInsightsRuleBodyFilter): any {
-    return dropUndefined({
-      Match: filter.filterMatch,
-      [filter.filterOperation]: filter.filterOperand,
-      IgnoreCase: filter.filterIgnoreCase,
-      Statistic: filter.filterStatistic,
-    });
+   * Creates an "In" filter operation JSON for Insights Rule Bodies
+   *
+   * For example, in('here', 'orThere') produces {"In" : ["here", "orThere"]}
+   * @param operand string inputs to the filter operation
+   */
+  public static in(...operand : string[]) : InsightsRuleBodyFilterOperationAndInput {
+    this.validateTextOperation(InsightsRuleBodyFilterOperations.IN, operand);
+    return {
+      [InsightsRuleBodyFilterOperations.IN]: operand,
+    };
   }
 
+  /**
+   * Creates a "NotIn" filter operation JSON for Insights Rule Bodies
+   *
+   * For example, NotIn('here', 'orThere') produces {"NotIn" : ["here", "orThere"]}
+   * @param operand string inputs to the filter operation
+   */
+  public static notIn(...operand : string[]) : InsightsRuleBodyFilterOperationAndInput {
+    this.validateTextOperation(InsightsRuleBodyFilterOperations.NOT_IN, operand);
+    return {
+      [InsightsRuleBodyFilterOperations.NOT_IN]: operand,
+    };
+  }
+
+  /**
+   * Creates a "StartsWith" filter operation JSON for Insights Rule Bodies
+   *
+   * For example, StartsWith('a', 'b') produces {"StartsWith" : ["a", "b"]}
+   * @param operand string inputs to the filter operation
+   */
+  public static startsWith(...operand : string[]) : InsightsRuleBodyFilterOperationAndInput {
+    this.validateTextOperation(InsightsRuleBodyFilterOperations.STARTS_WITH, operand);
+    return {
+      [InsightsRuleBodyFilterOperations.STARTS_WITH]: operand,
+    };
+  }
+
+  /**
+   * Creates a "GreaterThan" filter operation JSON for Insights Rule Bodies
+   *
+   * For example, greaterThan(0) produces {"GreaterThan" : 0}
+   * @param operand numerical input to the filter operation
+   */
+  public static greaterThan(operand : number) : InsightsRuleBodyFilterOperationAndInput {
+    return {
+      [InsightsRuleBodyFilterOperations.GREATER_THAN]: operand,
+    };
+  }
+
+  /**
+   * Creates a "LessThan" filter operation JSON for Insights Rule Bodies
+   *
+   * For example, lessThan(10) produces {"LessThan" : 10}
+   * @param operand numerical input to the filter operation
+   */
+  public static lessThan(operand : number) : InsightsRuleBodyFilterOperationAndInput {
+    return {
+      [InsightsRuleBodyFilterOperations.LESS_THAN]: operand,
+    };
+  }
+
+  /**
+   * Creates an "EqualTo" filter operation JSON for Insights Rule Bodies
+   *
+   * For example, equalTo(2) produces {"EqualTo" : 2}
+   * @param operand numerical input to the filter operation
+   */
+  public static equalTo(operand : number) : InsightsRuleBodyFilterOperationAndInput {
+    return {
+      [InsightsRuleBodyFilterOperations.EQUAL_TO]: operand,
+    };
+  }
+
+  /**
+   * Creates a "NotEqualTo" filter operation JSON for Insights Rule Bodies
+   *
+   * For example, notEqualTo(9001) produces {"NotEqualTo" : 9001}
+   * @param operand numerical input to the filter operation
+   */
+  public static notEqualTo(operand : number) : InsightsRuleBodyFilterOperationAndInput {
+    return {
+      [InsightsRuleBodyFilterOperations.NOT_EQUAL_TO]: operand,
+    };
+  }
+
+  /**
+   * Creates an "IsPresent" filter operation JSON for Insights Rule Bodies
+   *
+   * For example, isPresent(true) produces {"IsPresent" : true}
+   * @param operand inputs to the filter operation
+   */
+  public static isPresent(operand: boolean) : InsightsRuleBodyFilterOperationAndInput {
+    return {
+      [InsightsRuleBodyFilterOperations.IS_PRESENT]: operand,
+    };
+  }
+
+  private static MIN_TEXT_OPERANDS = 1;
+  private static MAX_TEXT_OPERANDS = 10;
+
+  /**
+   * Validation function for text operation operands to confirm the correct number of parameters were given
+   * @param operation the filter operation
+   * @param operand the filter operand we are validating
+   * @private
+   */
+  private static validateTextOperation(operation: InsightsRuleBodyFilterOperations, operand: string[]) {
+    if (operand.length > this.MAX_TEXT_OPERANDS || operand.length < this.MIN_TEXT_OPERANDS) {
+      throw new Error(`The ${operation} filter operation allows ${this.MIN_TEXT_OPERANDS} to ${this.MAX_TEXT_OPERANDS} `+
+          `inputs, but ${operand.length} was provided`);
+    }
+  }
+}
+
+/**
+ * A public API to use the filter operation functions to add filter operations to a filter.
+ *
+ * They are entirely the same as the base class, so nothing is added.
+ */
+export class CloudWatchLogsV1FilterOperationFunctions extends InsightsRuleBodyFilterOperationFunctions {
+}
+
+/**
+ * One day the import classes may have something in common, so this is a parent class that will define those
+ * common attributes and/or methods
+ */
+class InsightsRuleBodyFilter {
+}
+
+/**
+ * Class that provides static APIs to add filters to a cloudwatch log v1 rule body
+ */
+export class CloudWatchLogsV1Filter extends InsightsRuleBodyFilter {
+
+  /**
+   * Converts an ICloudWatchLogV1RuleBodyFilter to filter JSON to be used in a rule body
+   * @param filter the filter interface one wishes to use in a rule body
+   */
+  public static fromFilter(filter: ICloudWatchLogV1RuleBodyFilter): any {
+    /**
+     *  InsightsRuleBodyFilterOperationAndInput is defined such that it can only have 1 key and 1 value. Furthermore,
+     *  since it is a "type" the user cannot add more fields to it, so assuming the operation and operand
+     *  are at index 0 are fine
+     */
+    return {
+      Match: filter.match,
+      [Object.keys(filter.operationAndInput)[0]]: Object.values(filter.operationAndInput)[0],
+    };
+  }
+
+  /**
+   * Converts multiple filters (either given in JSON or in interface form) to filter JSON to be used in a rule body
+   * @param filters the filter interfaces and/or filter JSON one wished to use in a rule body
+   */
+  public static allOf(...filters: ICloudWatchLogV1RuleBodyFilter[]): any[] {
+    return filters.map(filter => this.fromFilter(filter));
+  }
 }
 
 /**
