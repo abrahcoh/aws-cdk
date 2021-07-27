@@ -4,7 +4,7 @@ import { dropUndefined } from './private/object';
 /**
  * All possible filter operations
  */
-enum InsightsRuleBodyFilterOperations {
+enum InsightRuleBodyFilterOperations {
 
   /**
    * Configures filter to check if match field is "IN" a set of strings
@@ -48,21 +48,21 @@ enum InsightsRuleBodyFilterOperations {
 }
 
 /**
- * Defines the filter operation and input for an Insights Rule Body
+ * Defines the filter operation and input for an Insight Rule Body
  *
  * In every filter, there is a line that defines the operation and input like "In" : ['this', 'that', 'there'],
  * where "In" is the operation and "['this', 'that', 'there']" is the operand.
  *
  * This type provides a convinient way of enforcing the operation for users creating filters
  */
-export type InsightsRuleBodyFilterOperationAndInput = {
+export type InsightRuleBodyFilterOperationAndInput = {
   [operation : string]: string[] | number | boolean;
 }
 
 /**
- * Properties of an Insights Rule Filter, not exported as it is a base interface for other schema filter interfaces to inherit
+ * Properties of an Insight Rule Filter, not exported as it is a base interface for other schema filter interfaces to inherit
  */
-interface IInsightsRuleBodyFilter {
+interface IInsightRuleBodyFilter {
 
   /**
      * Field of the log data the filter will act upon
@@ -70,119 +70,119 @@ interface IInsightsRuleBodyFilter {
   match: string,
 
   /**
-     * Filter operation chosen from InsightsRuleBodyFilterOperations
+     * Filter operation chosen from InsightRuleBodyFilterOperations
      */
-  operationAndInput: InsightsRuleBodyFilterOperationAndInput
+  operationAndInput: InsightRuleBodyFilterOperationAndInput
 }
 
 /**
  * Properties of a version 1 CloudWatchLogs Rule Body filter. It's the same as the base filter interface.
  * Added for future flexibility and inheritance purposes
  */
-export interface ICloudWatchLogV1RuleBodyFilter extends IInsightsRuleBodyFilter{
+export interface ICloudWatchLogV1RuleBodyFilter extends IInsightRuleBodyFilter{
 }
 
 /**
  * A base class that defines the common filter operations for all schemas
  */
-class InsightsRuleBodyFilterOperationFunctions {
+class InsightRuleBodyFilterOperationFunctions {
 
   /**
-   * Creates an "In" filter operation JSON for Insights Rule Bodies
+   * Creates an "In" filter operation JSON for Insight Rule Bodies
    *
    * For example, in('here', 'orThere') produces {"In" : ["here", "orThere"]}
    * @param operand string inputs to the filter operation
    */
-  public static in(...operand : string[]) : InsightsRuleBodyFilterOperationAndInput {
-    this.validateTextOperation(InsightsRuleBodyFilterOperations.IN, operand);
+  public static in(...operand : string[]) : InsightRuleBodyFilterOperationAndInput {
+    this.validateTextOperation(InsightRuleBodyFilterOperations.IN, operand);
     return {
-      [InsightsRuleBodyFilterOperations.IN]: operand,
+      [InsightRuleBodyFilterOperations.IN]: operand,
     };
   }
 
   /**
-   * Creates a "NotIn" filter operation JSON for Insights Rule Bodies
+   * Creates a "NotIn" filter operation JSON for Insight Rule Bodies
    *
    * For example, NotIn('here', 'orThere') produces {"NotIn" : ["here", "orThere"]}
    * @param operand string inputs to the filter operation
    */
-  public static notIn(...operand : string[]) : InsightsRuleBodyFilterOperationAndInput {
-    this.validateTextOperation(InsightsRuleBodyFilterOperations.NOT_IN, operand);
+  public static notIn(...operand : string[]) : InsightRuleBodyFilterOperationAndInput {
+    this.validateTextOperation(InsightRuleBodyFilterOperations.NOT_IN, operand);
     return {
-      [InsightsRuleBodyFilterOperations.NOT_IN]: operand,
+      [InsightRuleBodyFilterOperations.NOT_IN]: operand,
     };
   }
 
   /**
-   * Creates a "StartsWith" filter operation JSON for Insights Rule Bodies
+   * Creates a "StartsWith" filter operation JSON for Insight Rule Bodies
    *
    * For example, StartsWith('a', 'b') produces {"StartsWith" : ["a", "b"]}
    * @param operand string inputs to the filter operation
    */
-  public static startsWith(...operand : string[]) : InsightsRuleBodyFilterOperationAndInput {
-    this.validateTextOperation(InsightsRuleBodyFilterOperations.STARTS_WITH, operand);
+  public static startsWith(...operand : string[]) : InsightRuleBodyFilterOperationAndInput {
+    this.validateTextOperation(InsightRuleBodyFilterOperations.STARTS_WITH, operand);
     return {
-      [InsightsRuleBodyFilterOperations.STARTS_WITH]: operand,
+      [InsightRuleBodyFilterOperations.STARTS_WITH]: operand,
     };
   }
 
   /**
-   * Creates a "GreaterThan" filter operation JSON for Insights Rule Bodies
+   * Creates a "GreaterThan" filter operation JSON for Insight Rule Bodies
    *
    * For example, greaterThan(0) produces {"GreaterThan" : 0}
    * @param operand numerical input to the filter operation
    */
-  public static greaterThan(operand : number) : InsightsRuleBodyFilterOperationAndInput {
+  public static greaterThan(operand : number) : InsightRuleBodyFilterOperationAndInput {
     return {
-      [InsightsRuleBodyFilterOperations.GREATER_THAN]: operand,
+      [InsightRuleBodyFilterOperations.GREATER_THAN]: operand,
     };
   }
 
   /**
-   * Creates a "LessThan" filter operation JSON for Insights Rule Bodies
+   * Creates a "LessThan" filter operation JSON for Insight Rule Bodies
    *
    * For example, lessThan(10) produces {"LessThan" : 10}
    * @param operand numerical input to the filter operation
    */
-  public static lessThan(operand : number) : InsightsRuleBodyFilterOperationAndInput {
+  public static lessThan(operand : number) : InsightRuleBodyFilterOperationAndInput {
     return {
-      [InsightsRuleBodyFilterOperations.LESS_THAN]: operand,
+      [InsightRuleBodyFilterOperations.LESS_THAN]: operand,
     };
   }
 
   /**
-   * Creates an "EqualTo" filter operation JSON for Insights Rule Bodies
+   * Creates an "EqualTo" filter operation JSON for Insight Rule Bodies
    *
    * For example, equalTo(2) produces {"EqualTo" : 2}
    * @param operand numerical input to the filter operation
    */
-  public static equalTo(operand : number) : InsightsRuleBodyFilterOperationAndInput {
+  public static equalTo(operand : number) : InsightRuleBodyFilterOperationAndInput {
     return {
-      [InsightsRuleBodyFilterOperations.EQUAL_TO]: operand,
+      [InsightRuleBodyFilterOperations.EQUAL_TO]: operand,
     };
   }
 
   /**
-   * Creates a "NotEqualTo" filter operation JSON for Insights Rule Bodies
+   * Creates a "NotEqualTo" filter operation JSON for Insight Rule Bodies
    *
    * For example, notEqualTo(9001) produces {"NotEqualTo" : 9001}
    * @param operand numerical input to the filter operation
    */
-  public static notEqualTo(operand : number) : InsightsRuleBodyFilterOperationAndInput {
+  public static notEqualTo(operand : number) : InsightRuleBodyFilterOperationAndInput {
     return {
-      [InsightsRuleBodyFilterOperations.NOT_EQUAL_TO]: operand,
+      [InsightRuleBodyFilterOperations.NOT_EQUAL_TO]: operand,
     };
   }
 
   /**
-   * Creates an "IsPresent" filter operation JSON for Insights Rule Bodies
+   * Creates an "IsPresent" filter operation JSON for Insight Rule Bodies
    *
    * For example, isPresent(true) produces {"IsPresent" : true}
    * @param operand inputs to the filter operation
    */
-  public static isPresent(operand: boolean) : InsightsRuleBodyFilterOperationAndInput {
+  public static isPresent(operand: boolean) : InsightRuleBodyFilterOperationAndInput {
     return {
-      [InsightsRuleBodyFilterOperations.IS_PRESENT]: operand,
+      [InsightRuleBodyFilterOperations.IS_PRESENT]: operand,
     };
   }
 
@@ -195,7 +195,7 @@ class InsightsRuleBodyFilterOperationFunctions {
    * @param operand the filter operand we are validating
    * @private
    */
-  private static validateTextOperation(operation: InsightsRuleBodyFilterOperations, operand: string[]) {
+  private static validateTextOperation(operation: InsightRuleBodyFilterOperations, operand: string[]) {
     if (operand.length > this.MAX_TEXT_OPERANDS || operand.length < this.MIN_TEXT_OPERANDS) {
       throw new Error(`The ${operation} filter operation allows ${this.MIN_TEXT_OPERANDS} to ${this.MAX_TEXT_OPERANDS} `+
           `inputs, but ${operand.length} was provided`);
@@ -208,20 +208,20 @@ class InsightsRuleBodyFilterOperationFunctions {
  *
  * They are entirely the same as the base class, so nothing is added.
  */
-export class CloudWatchLogsV1FilterOperationFunctions extends InsightsRuleBodyFilterOperationFunctions {
+export class CloudWatchLogsV1FilterOperationFunctions extends InsightRuleBodyFilterOperationFunctions {
 }
 
 /**
  * One day the import classes may have something in common, so this is a parent class that will define those
  * common attributes and/or methods
  */
-class InsightsRuleBodyFilter {
+class InsightRuleBodyFilter {
 }
 
 /**
  * Class that provides static APIs to add filters to a cloudwatch log v1 rule body
  */
-export class CloudWatchLogsV1Filter extends InsightsRuleBodyFilter {
+export class CloudWatchLogsV1Filter extends InsightRuleBodyFilter {
 
   /**
    * Converts an ICloudWatchLogV1RuleBodyFilter to filter JSON to be used in a rule body
@@ -229,7 +229,7 @@ export class CloudWatchLogsV1Filter extends InsightsRuleBodyFilter {
    */
   public static fromFilter(filter: ICloudWatchLogV1RuleBodyFilter): any {
     /**
-     *  InsightsRuleBodyFilterOperationAndInput is defined such that it can only have 1 key and 1 value. Furthermore,
+     *  InsightRuleBodyFilterOperationAndInput is defined such that it can only have 1 key and 1 value. Furthermore,
      *  since it is a "type" the user cannot add more fields to it, so assuming the operation and operand
      *  are at index 0 are fine
      */
@@ -249,9 +249,9 @@ export class CloudWatchLogsV1Filter extends InsightsRuleBodyFilter {
 }
 
 /**
- * Properties of an Insights Rule Contribution
+ * Properties of an Insight Rule Contribution
  */
-export interface IInsightsRuleContribution {
+export interface IInsightRuleContribution {
   /**
    * Array up to four log fields that are used as dimensions to classify contributors
    */
@@ -270,7 +270,7 @@ export interface IInsightsRuleContribution {
 
   /**
    * Array up to four filters to narrow the log events that are included in the report
-   * If multiple are provided, Contributor Insights evaluates them with a logical AND operator
+   * If multiple are provided, Contributor Insight evaluates them with a logical AND operator
    *
    * @default - none, no narrowing of log events
    */
@@ -278,24 +278,24 @@ export interface IInsightsRuleContribution {
 }
 
 /**
- * Properties of an Insights Rule Schema
+ * Properties of an Insight Rule Schema
  */
-export interface IInsightsRuleSchema {
+export interface IInsightRuleSchema {
   /**
-   * Insights Rule Body schema name
+   * Insight Rule Body schema name
    */
   name: string,
 
   /**
-   * Insights Rule Body schema version
+   * Insight Rule Body schema version
    */
   version: number
 }
 
 /**
- * An enum that describes the possible values for AggregateOn field in an Insights Rule Body
+ * An enum that describes the possible values for AggregateOn field in an Insight Rule Body
  */
-export enum InsightsRuleAggregates {
+export enum InsightRuleAggregates {
   /**
    * Aggregates the report based on the count of occurances of the contribution
    */
@@ -310,7 +310,7 @@ export enum InsightsRuleAggregates {
 /**
  * An enum that describes the possible log formats for a CloudWatch log rule
  */
-export enum InsightsRuleLogFormats {
+export enum InsightRuleLogFormats {
   /**
    * Log groups emit data with a JSON format
    */
@@ -323,9 +323,9 @@ export enum InsightsRuleLogFormats {
 }
 
 /**
- * Common properties to all Insights Rule Bodies (besides string rule bodies)
+ * Common properties to all Insight Rule Bodies (besides string rule bodies)
  */
-interface IInsightsRuleBody {
+interface IInsightRuleBody {
   /**
    * Defines the name and version of the rule body schema
    *
@@ -333,23 +333,23 @@ interface IInsightsRuleBody {
    * this defaults to { Name: "CloudWatchLogs", Version: 1}
    * @default - whatever is provided by the rule body importation class
    */
-  schema?: IInsightsRuleSchema,
+  schema?: IInsightRuleSchema,
 
   /**
    * Defines all properties of the contribution for the rule body
    */
-  contribution: IInsightsRuleContribution,
+  contribution: IInsightRuleContribution,
 
   /**
    * Defines how the rule will aggregate the data for the report
    */
-  aggregateOn?: InsightsRuleAggregates
+  aggregateOn?: InsightRuleAggregates
 }
 
 /**
  * Properties of a version 1 CloudWatch Logs rule body
  */
-export interface ICloudWatchLogsV1RuleBody extends IInsightsRuleBody{
+export interface ICloudWatchLogsV1RuleBody extends IInsightRuleBody{
 
   /**
    * Defines the log groups the rule will pull data from
@@ -363,7 +363,7 @@ export interface ICloudWatchLogsV1RuleBody extends IInsightsRuleBody{
    *
    * @default - JSON if Fields undefined, else CLF
    */
-  logFormat?: InsightsRuleLogFormats,
+  logFormat?: InsightRuleLogFormats,
 
   /**
    * Defines the aliases for log keys for CLF formatted log groups
@@ -424,7 +424,7 @@ export class CloudWatchLogsV1RuleBody {
 
   private static readonly MAX_KEYS: number = 4;
   private static readonly MIN_KEYS: number = 0;
-  private static readonly SCHEMA: IInsightsRuleSchema = { name: 'CloudWatchLogRule', version: 1 };
+  private static readonly SCHEMA: IInsightRuleSchema = { name: 'CloudWatchLogRule', version: 1 };
   private static readonly MAX_FILTERS: number = 4;
 
   /**
@@ -464,7 +464,7 @@ export class CloudWatchLogsV1RuleBody {
      * If a log format is given, it will be used.
      * Otherwise, if Fields has a value, CLF will be chosen. Else, JSON will be chosen.
      */
-    ruleBody.logFormat = ruleBody.logFormat || (ruleBody.fields? InsightsRuleLogFormats.CLF : InsightsRuleLogFormats.JSON);
+    ruleBody.logFormat = ruleBody.logFormat || (ruleBody.fields? InsightRuleLogFormats.CLF : InsightRuleLogFormats.JSON);
 
     /**
      * If a schema is given, even if it is wrong (it'll be caught in validateRuleBody), it will be used.
@@ -479,7 +479,7 @@ export class CloudWatchLogsV1RuleBody {
      * sense to set it SUM is chosen for AggregateOn). Otherwise, COUNT is chosen.
      */
     ruleBody.aggregateOn = ruleBody.aggregateOn ||
-        (ruleBody.contribution.valueof ? InsightsRuleAggregates.SUM : InsightsRuleAggregates.COUNT);
+        (ruleBody.contribution.valueof ? InsightRuleAggregates.SUM : InsightRuleAggregates.COUNT);
 
     /**
      * Cloudformation will scream if we do not include an empty [] for filters if there are none
