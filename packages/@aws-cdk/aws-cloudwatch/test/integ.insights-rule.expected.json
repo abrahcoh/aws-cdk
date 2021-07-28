@@ -1,0 +1,20 @@
+{
+  "Resources": {
+    "myRule463F9234": {
+      "Type": "AWS::CloudWatch::InsightRule",
+      "Properties": {
+        "RuleBody": "{\"Schema\":{\"Name\":\"CloudWatchLogRule\",\"Version\":1},\"LogGroupNames\":[\"/aws/lambda/*\"],\"LogFormat\":\"CLF\",\"Fields\":{\"1\":\"requestId\"},\"Contribution\":{\"Keys\":[\"requestId\"],\"Filters\":[]},\"AggregateOn\":\"Count\"}",
+        "RuleName": "aVeryCoolRule",
+        "RuleState": "ENABLED"
+      }
+    },
+    "myRadRule08B655B1": {
+      "Type": "AWS::CloudWatch::InsightRule",
+      "Properties": {
+        "RuleBody": "{\"Schema\":{\"Name\":\"CloudWatchLogRule\",\"Version\":1},\"LogGroupNames\":[\"/aws/lambda/*\"],\"LogFormat\":\"JSON\",\"Contribution\":{\"Keys\":[\"$.requestId\"],\"ValueOf\":\"$.BytesRecieved\",\"Filters\":[{\"Match\":\"$.httpMethod\",\"StartsWith\":[\"PUT\"]}]},\"AggregateOn\":\"Sum\"}",
+        "RuleName": "aRadRule",
+        "RuleState": "ENABLED"
+      }
+    }
+  }
+}
