@@ -20,10 +20,22 @@ const graph = new cloudwatch.GraphWidget({
   title: 'WickedRule',
 });
 
-const dash = new cloudwatch.Dashboard(stack, 'wickedDash', {
-  dashboardName: 'my-wild-dashboard',
+const insightWidget = new cloudwatch.InsightRuleWidget({
+  rule: rule,
 });
 
-dash.addWidgets(graph);
+const alarm = new cloudwatch.Alarm(stack, 'asd', {
+  metric: rule.uniqueContributors(),
+  threshold: 10,
+  evaluationPeriods: 5,
+});
+
+const dash = new cloudwatch.Dashboard(stack, 'wickedDash', {
+  dashboardName: 'another-wild-dashboard',
+});
+
+dash.addWidgets(graph, insightWidget, new cloudwatch.AlarmWidget({
+  alarm: alarm,
+}));
 
 app.synth();
