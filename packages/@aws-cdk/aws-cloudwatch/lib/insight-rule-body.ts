@@ -1,4 +1,5 @@
-import * as fs from 'fs';
+import { readFileSync } from 'fs';
+import { keysToPascalCase } from './private/insight-rule-util';
 import { dropUndefined } from './private/object';
 
 /**
@@ -261,8 +262,7 @@ export interface IInsightRuleContribution {
    * Specify this only when specifying SUM as AggregateOn and for log fields with numerical values. Used to sort
    * contributors by the sum of the values of their fields in valueOf
    *
-   * Also, this is not camelcase, as 'valueOf?' for some reasons gives a compiler error that I cannot find online. May be
-   * a typescript keyword
+   * Also, this is not camelcase, as 'valueOf' is a typescript keyword and if we leave it as such it'll give an error
    *
    * @default - none, no contributor sorting will occur
    */
@@ -375,21 +375,43 @@ export interface ICloudWatchLogsV1RuleBody extends IInsightRuleBody{
 }
 
 /**
+ * Interface for describing a rule body
+ */
+export interface IRuleBody {
+
+  /**
+   * serialized representation of a rule body to be used when building the Insight Rule resource.
+   */
+  renderRuleBody(): string;
+}
+
+/**
+ * Defines all attributes common to all rule body importation classes, besides CustomRuleBody
+ */
+class InsightRuleBody {
+  protected static readonly MAX_CONTRIBUTION_KEYS : number = 4;
+  protected static readonly MIN_CONTRIBUTION_KEYS : number = 0;
+  protected static readonly MAX_CONTRIBUTION_FILTERS : number = 4;
+}
+
+/**
  * Class that defines the static import methods for a version 1 CloudWatch Logs rule body
  */
-export class CloudWatchLogsV1RuleBody {
+export class CloudWatchLogsV1RuleBody extends InsightRuleBody {
 
   /**
    * Creates a version 1 CloudWatch logs rule body from an ICloudWatchLogsV1RuleBody interface
    * @param ruleBody interface that describes the rule body
    */
-  public static fromRuleBody(ruleBody: ICloudWatchLogsV1RuleBody): string {
+  public static fromRuleBody(ruleBody: ICloudWatchLogsV1RuleBody): IRuleBody {
     ruleBody = this.setRuleBodyDefaults(ruleBody);
     this.validateRuleBody(ruleBody);
 
-    return JSON.stringify(
-      this.allKeysToPascalCase(dropUndefined(ruleBody)),
-    );
+    return new class implements IRuleBody {
+      public renderRuleBody(): string {
+        return JSON.stringify(ruleBodyKeysToPascalCase(dropUndefined(ruleBody)));
+      }
+    };
   }
 
   /**
@@ -397,35 +419,23 @@ export class CloudWatchLogsV1RuleBody {
    * @param filepath location of file with a version 1 CloudWatch logs rule body
    * @param encoding encoding of file
    */
-  public static fromFile(filepath: string, encoding : BufferEncoding = 'utf8'): string {
-    /**
-     * TODO: Need to inquire on what the policy is for try/catch. I know the CDK does not like try/catch as no error should
-     * be recoverable; however, there may be some merit for catching, if only to give better error messages
-     */
+  public static fromFile(filepath: string, encoding : BufferEncoding = 'utf8'): IRuleBody {
+    //If this fails, there is no better error message we can give, so allow it to not be caught
+    let ruleBodyString : string = readFileSync(filepath, { encoding: encoding, flag: 'r' }).toString();
 
-    //If this fails, there is no better error message we can give, so allow it to not be catched
-    let ruleBodyString : string = fs.readFileSync(filepath, { encoding: encoding, flag: 'r' });
-
-    //If this fails, we may be able to give a better error message than what this provides. Look at TODO above.
     /**
      * This has two possibilities of failures:
      * 1) From JSON.parse(...): The string provided is not valid JSON. If this passes, it's valid JSON
      * 2) From "ruleBody : ICloudWatchLogsV1RuleBody": The JSON object cannot be cast into a version 1 CW log rule body
      * If the above passes, it has all the correct and needed fields.
      *
-     * See the note about about inquiring on try/catch to provide better error messages
      */
     let ruleBody : ICloudWatchLogsV1RuleBody = JSON.parse(ruleBodyString);
 
-    ruleBody = this.setRuleBodyDefaults(ruleBody);
-    this.validateRuleBody(ruleBody);
-    return JSON.stringify(this.allKeysToPascalCase(ruleBody));
+    return this.fromRuleBody(ruleBody);
   }
 
-  private static readonly MAX_KEYS: number = 4;
-  private static readonly MIN_KEYS: number = 0;
   private static readonly SCHEMA: IInsightRuleSchema = { name: 'CloudWatchLogRule', version: 1 };
-  private static readonly MAX_FILTERS: number = 4;
 
   /**
    * Validates that the rule body conforms to the restrictions of a version 1 CloudWatch logs rule body.
@@ -441,14 +451,15 @@ export class CloudWatchLogsV1RuleBody {
     }
 
     //validating the rule body for proper amount of keys
-    if (ruleBody.contribution.keys.length > this.MAX_KEYS || ruleBody.contribution.keys.length < this.MIN_KEYS) {
-      throw new Error(`A version 1 CloudWatch Log Rule body can have between ${this.MIN_KEYS} to ${this.MAX_KEYS} keys, but `+
-          `${ruleBody.contribution.keys.length} was given.`);
+    if (ruleBody.contribution.keys.length > this.MAX_CONTRIBUTION_KEYS ||
+          ruleBody.contribution.keys.length < this.MIN_CONTRIBUTION_KEYS) {
+      throw new Error(`A version 1 CloudWatch Log Rule body can have between ${this.MIN_CONTRIBUTION_KEYS} to `+`
+           ${this.MIN_CONTRIBUTION_KEYS} keys, but ${ruleBody.contribution.keys.length} was given.`);
     }
 
     //validating the rule body for proper amount of filters, if given
-    if (ruleBody.contribution.filters && ruleBody.contribution.filters.length > this.MAX_FILTERS) {
-      throw new Error(`A version 1 CloudWatch Log Rule body can up to ${this.MAX_FILTERS} , but `+
+    if (ruleBody.contribution.filters && ruleBody.contribution.filters.length > this.MAX_CONTRIBUTION_FILTERS) {
+      throw new Error(`A version 1 CloudWatch Log Rule body can up to ${this.MAX_CONTRIBUTION_FILTERS} , but `+
           `${ruleBody.contribution.keys.length} was given.`);
     }
   }
@@ -468,13 +479,12 @@ export class CloudWatchLogsV1RuleBody {
 
     /**
      * If a schema is given, even if it is wrong (it'll be caught in validateRuleBody), it will be used.
-     * TODO: It might just be better to always set it to the proper schema regardless of what a user inputs
      * Otherwise, this rule body's schema will be given.
      */
     ruleBody.schema = ruleBody.schema || this.SCHEMA;
 
     /**
-     * For aggregate on, if a value is given, it will be used (even if it doesn't make sense).
+     * For aggregate on, if a value is given.
      * Otherwise, if a value if NOT given, if valueOf is defined, SUM will be chosen (as the valueOf parameter only makes
      * sense to set it SUM is chosen for AggregateOn). Otherwise, COUNT is chosen.
      */
@@ -488,30 +498,47 @@ export class CloudWatchLogsV1RuleBody {
 
     return ruleBody;
   }
+}
+
+/**
+ * Class that defines the static importation methods for a custom rule body
+ *
+ * This class, differing from all other rule body classes, does not perform any validation.
+ */
+export class CustomRuleBody {
 
   /**
-   * Makes all the keys of a version 1 CloudWatch rule body PascalCase
-   *
-   * Doing this manually and non-generically was chosen, as a generic version would involve recursion
-   * which isn't good for production.
-   * @param ruleBody rule body that will have pascal case keys
-   * @private
+   * Renders a rule body JSON to a string
+   * @param ruleBody JSON describing a rule body
    */
-  private static allKeysToPascalCase(ruleBody: ICloudWatchLogsV1RuleBody): any {
-    return {
-      Schema: {
-        Name: ruleBody.schema?.name,
-        Version: ruleBody.schema?.version,
-      },
-      LogGroupNames: ruleBody.logGroupNames,
-      LogFormat: ruleBody.logFormat,
-      Fields: ruleBody.fields,
-      Contribution: {
-        Keys: ruleBody.contribution.keys,
-        ValueOf: ruleBody.contribution.valueof,
-        Filters: ruleBody.contribution.filters,
-      },
-      AggregateOn: ruleBody.aggregateOn,
+  public static fromRuleBody(ruleBody: any): IRuleBody {
+    return new class implements IRuleBody {
+      public renderRuleBody(): string {
+        return JSON.stringify(ruleBody);
+      }
     };
   }
+
+  /**
+   * Creates a rule body from contents stored in a file
+   * @param filepath location of file with a rule body
+   * @param encoding encoding of file
+   */
+  public static fromFile(filepath: string, encoding : BufferEncoding = 'utf8'): IRuleBody {
+    //If this fails, there is no better error message we can give, so allow it to not be caught
+    return this.fromRuleBody(readFileSync(filepath, { encoding: encoding, flag: 'r' }).toString());
+  }
+}
+
+export function ruleBodyKeysToPascalCase<T extends IInsightRuleBody>(ruleBody: T) {
+  let pascalRuleBody : any = keysToPascalCase(ruleBody);
+
+  //All fields should be good now besides the 'valueof' field which is now 'Valueof'. It needs to be 'ValueOf'
+  //see note about ValueOf field in IInsightRuleContribution interface to explain why naming was chosen
+  if (pascalRuleBody.Contribution.Valueof) {
+    pascalRuleBody.Contribution.ValueOf = pascalRuleBody.Contribution.Valueof;
+    delete pascalRuleBody.Contribution.Valueof;
+  }
+
+  return pascalRuleBody;
 }

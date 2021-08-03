@@ -1,5 +1,6 @@
 import * as cdk from '@aws-cdk/core';
 import { IAlarm } from './alarm-base';
+import { IInsightRule } from './insight-rule';
 import { IMetric } from './metric-types';
 import { allMetricsGraphJson } from './private/rendering';
 import { ConcreteWidget } from './widget';
@@ -11,7 +12,7 @@ export interface MetricWidgetProps {
   /**
    * Title for the graph
    *
-   * @default - None
+   * @default - None for all widgets besides Insight Widgets. Rule name for Insight Widget
    */
   readonly title?: string;
 
@@ -32,7 +33,7 @@ export interface MetricWidgetProps {
   /**
    * Height of the widget
    *
-   * @default - 6 for Alarm and Graph widgets.
+   * @default - 6 for Alarm, InsightRule, and Graph widgets.
    *   3 for single value widgets where most recent value of a metric is displayed.
    */
   readonly height?: number;
@@ -120,6 +121,117 @@ export class AlarmWidget extends ConcreteWidget {
     }];
   }
 }
+
+/**
+ * All possible values to order contributors by in an InsightsWidget
+ */
+export enum InsightRuleOrderBy {
+  /**
+   * Rank contributors by their maximum single value during the time window.
+   */
+  MAXIMUM = 'Maximum',
+
+  /**
+   * Rank contributors by contributors by their total contribution during the time window.
+   */
+  SUM = 'Sum'
+}
+
+/**
+ * Properties for an Insight Rule Widget
+ */
+export interface InsightRuleWidgetProps extends MetricWidgetProps {
+  /**
+   * The rule to show
+   */
+  readonly rule: IInsightRule;
+
+  /**
+   * Maximum number of contributors to show on the widget
+   * Minimum is 1, max is 100
+   *
+   * @default - 10
+   */
+  readonly maxContributorCount?: number;
+
+  /**
+   * How to order contributors, can either be Maximum or Sum
+   *
+   * @default - SUM
+   */
+  readonly orderBy?: InsightRuleOrderBy;
+
+  /**
+   * Left Y axis
+   *
+   * @default - No minimum or maximum values for the left Y-axis
+   */
+  readonly leftYAxis?: YAxisProps;
+
+  /**
+   * Position of the legend
+   *
+   * @default - bottom
+   */
+  readonly legendPosition?: LegendPosition;
+
+  /**
+   * Whether the graph should be shown as stacked lines
+   *
+   * @default false
+   */
+  readonly stacked?: boolean;
+
+  /**
+   * The default period for all metrics in this widget.
+   * The period is the length of time represented by one data point on the graph.
+   * This default can be overridden within each metric definition.
+   *
+   * @default cdk.Duration.seconds(60)
+   */
+  readonly period?: cdk.Duration;
+
+}
+
+/**
+ * Display an Insight Rule
+ */
+export class InsightRuleWidget extends ConcreteWidget {
+  private readonly props: InsightRuleWidgetProps;
+
+  constructor(props: InsightRuleWidgetProps) {
+    super(props.width || 6, props.height || 6);
+    this.props = props;
+  }
+
+  public toJson(): any[] {
+    return [{
+      type: 'metric',
+      width: this.width,
+      height: this.height,
+      x: this.x,
+      y: this.y,
+      properties: {
+        view: 'timeSeries',
+        title: this.props.title || this.props.rule.insightRuleRuleName,
+        region: this.props.region || cdk.Aws.REGION,
+        yAxis: {
+          left: this.props.leftYAxis ?? { showUnits: false },
+          right: { showUnits: false },
+        },
+        stacked: this.props.stacked ?? false,
+        legend: { position: (this.props.legendPosition || LegendPosition.BOTTOM) },
+        insightRule: {
+          maxContributorCount: this.props.maxContributorCount ?? 10,
+          orderBy: this.props.orderBy ?? InsightRuleOrderBy.SUM,
+          ruleName: this.props.rule.insightRuleRuleName,
+        },
+        period: this.props.period?.toSeconds() || 60,
+      },
+    }];
+  }
+}
+
 
 /**
  * Types of view

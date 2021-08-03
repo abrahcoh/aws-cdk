@@ -2,7 +2,8 @@ import * as iam from '@aws-cdk/aws-iam';
 import * as core from '@aws-cdk/core';
 import { Construct } from 'constructs';
 import { CfnInsightRule } from './cloudwatch.generated';
-import { MetricOptions, Metric } from './metric';
+import { IRuleBody } from './insight-rule-body';
+import { MathExpression } from './metric';
 
 
 /**
@@ -29,15 +30,113 @@ export interface IInsightRule extends core.IResource {
      * @param grantee the principle to grant access to (no-op if undefined)
      * @param actions set of actions to allow
      */
-  grant(grantee: iam.IGrantable, ...actions: string[]): iam.Grant
+  grant(grantee: iam.IGrantable, ...actions: string[]): iam.Grant;
 
   /**
-     * Returns the given named metric for this rule
-     *
-     * @param metricName the value one wishes to take the metrics of
-     * @param options properties of the metric (i.e. period, etc)
-     */
-  metric(metricName: string, options?: MetricOptions): Metric
+   * Returns a math expression for the number of unique contributors for each datapoint in the rule.
+   *
+   * @param period time interval metric will be aggregate over
+   * @default undefined, will be 5 minutes
+   */
+  uniqueContributors(period?: core.Duration): MathExpression;
+
+  /**
+   * Returns a math expression the value of the top contributor for each data point in the rule.
+   *
+   * If this rule aggregates by Count, the top contributor for each data point is the contributor with the most
+   * occurrences in that period. If the rule aggregates by Sum, the top contributor is the contributor with the
+   * greatest sum in the log field specified by the rule's Value during that period.
+   *
+   * @param period time interval metric will be aggregate over
+   * @default undefined, will be 5 minutes
+   */
+  maxContributorValue(period?: core.Duration): MathExpression;
+
+  /**
+   * Returns a math expression for the number of data points matched by the rule
+   *
+   * @param period time interval metric will be aggregate over
+   * @default undefined, will be 5 minutes
+   */
+  sampleCount(period?: core.Duration): MathExpression;
+
+  /**
+   * Returns a math expression for the sum of the values from all contributors during the time period represented by that data
+   * point
+   *
+   * @param period time interval metric will be aggregate over
+   * @default undefined, will be 5 minutes
+   */
+  sum(period?: core.Duration): MathExpression;
+
+  /**
+   * Returns a math expression for the minimum value from a single observation during the time period represented
+   * by that data point.
+   *
+   * @param period time interval metric will be aggregate over
+   * @default undefined, will be 5 minutes
+   */
+  minimum(period?: core.Duration): MathExpression;
+
+  /**
+   * Returns a math expression for the number of unique contributors for each datapoint in the rule
+   *
+   * @param period time interval metric will be aggregate over
+   * @default undefined, will be 5 minutes
+   */
+  maximum(period?: core.Duration): MathExpression;
+
+  /**
+   * Returns a math expression for the average value from all contributors during the time period represented by that data point.
+   * data point.
+   *
+   * @param period time interval metric will be aggregate over
+   * @default undefined, will be 5 minutes
+   */
+  average(period?: core.Duration): MathExpression;
+}
+
+/**
+ * An enum describing all possible metrics for an insight rule
+ *
+ * @see https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/ContributorInsights-GraphReportData.html
+ */
+enum InsightRuleMetricNames {
+  /**
+   * the number of unique contributors for each data point.
+   */
+  UNIQUE_CONTRIBUTORS = 'UniqueContributors',
+
+  /**
+   * the value of the top contributor for each data point. The identity of the contributor might change for each data point in
+   * the graph.
+   */
+  MAX_CONTRIBUTOR_VALUE = 'MaxContributorValue',
+
+  /**
+   * the number of data points matched by the rule
+   */
+  SAMPLE_COUNT = 'SampleCount',
+
+  /**
+   * the sum of the values from all contributors during the time period represented by that data point
+   */
+  SUM = 'Sum',
+
+  /**
+   * the minimum value from a single observation during the time period represented by that data point.
+   */
+  MINIMUM = 'Minimum',
+
+  /**
+   * the maximum value from a single observation during the time period represented by that data point.
+   */
+  MAXIMUM = 'Maximum',
+
+  /**
+   * the average value from all contributors during the time period represented by that data point.
+   */
+  AVERAGE = 'Average'
 }
 
 /**
@@ -47,21 +146,21 @@ export interface IInsightRule extends core.IResource {
 abstract class InsightRuleBase extends core.Resource implements IInsightRule {
 
   /**
-     * @attribute
-     */
+   * @attribute
+   */
   public abstract readonly insightRuleArn: string;
 
   /**
-     * @attribute
-     */
+   * @attribute
+   */
   public abstract readonly insightRuleRuleName: string;
 
   /**
-     * Adds an IAM policy statement associated with this rule to an IAM principle's policy
-     *
-     * @param grantee the principle to grant access to (no-op if undefined)
-     * @param actions set of actions to allow
-     */
+   * Adds an IAM policy statement associated with this rule to an IAM principle's policy
+   *
+   * @param grantee the principle to grant access to (no-op if undefined)
+   * @param actions set of actions to allow
+   */
   public grant(grantee: iam.IGrantable, ...actions: string[]): iam.Grant {
     return iam.Grant.addToPrincipal({
       grantee: grantee,
@@ -72,20 +171,95 @@ abstract class InsightRuleBase extends core.Resource implements IInsightRule {
   }
 
   /**
-   * Returns the given named metric for this rule
-   *
-   * @param metricName the value one wishes to take the metrics of
-   * @param props properties that describe the characteristics of the MetricOptions
+   * Returns a math expression for the number of unique contributors for each datapoint in the rule.
    */
-  public metric(metricName: string, props?: MetricOptions): Metric {
-    return new Metric({
-      namespace: 'AWS/InsightRule',
-      metricName,
-      dimensions: {
-        TableName: this.insightRuleRuleName,
-      },
-      ...props,
-    }).attachTo(this);
+  public uniqueContributors(period?: core.Duration): MathExpression {
+    return this.createMathExpression(InsightRuleMetricNames.UNIQUE_CONTRIBUTORS, period);
+  }
+
+  /**
+   * Returns a math expression the value of the top contributor for each data point in the rule.
+   *
+   * If this rule aggregates by Count, the top contributor for each data point is the contributor with the most
+   * occurrences in that period. If the rule aggregates by Sum, the top contributor is the contributor with the
+   * greatest sum in the log field specified by the rule's Value during that period.
+   *
+   * @param period time interval metric will be aggregate over
+   * @default undefined, will be 5 minutes
+   */
+  public maxContributorValue(period?: core.Duration): MathExpression {
+    return this.createMathExpression(InsightRuleMetricNames.MAX_CONTRIBUTOR_VALUE, period);
+  }
+
+  /**
+   * Returns a math expression for the number of data points matched by the rule
+   *
+   * @param period time interval metric will be aggregate over
+   * @default undefined, will be 5 minutes
+   */
+  public sampleCount(period?: core.Duration): MathExpression {
+    return this.createMathExpression(InsightRuleMetricNames.SAMPLE_COUNT, period);
+  }
+
+  /**
+   * Returns a math expression for the sum of the values from all contributors during the time period represented by that data
+   * point
+   *
+   * @param period time interval metric will be aggregate over
+   * @default undefined, will be 5 minutes
+   */
+  public sum(period?: core.Duration): MathExpression {
+    return this.createMathExpression(InsightRuleMetricNames.SUM, period);
+  }
+
+  /**
+   * Returns a math expression for the minimum value from a single observation during the time period represented
+   * by that data point.
+   *
+   * @param period time interval metric will be aggregate over
+   * @default undefined, will be 5 minutes
+   */
+  public minimum(period?: core.Duration): MathExpression {
+    return this.createMathExpression(InsightRuleMetricNames.MINIMUM, period);
+  }
+
+  /**
+   * Returns a math expression the maximum value from a single observation during the time period represented by that data point.
+   *
+   * @param period time interval metric will be aggregate over
+   * @default undefined, will be 5 minutes
+   */
+  public maximum(period?: core.Duration): MathExpression {
+    return this.createMathExpression(InsightRuleMetricNames.MAXIMUM, period);
+  }
+
+  /**
+   * Returns a math expression for the average value from all contributors during the time period represented by that data point.
+   * data point.
+   *
+   * @param period time interval metric will be aggregate over
+   * @default undefined, will be 5 minutes
+   */
+  public average(period?: core.Duration): MathExpression {
+    return this.createMathExpression(InsightRuleMetricNames.AVERAGE, period);
+  }
+
+  /**
+   * Generates a math expression given a metric name.
+   *
+   * @see https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/ContributorInsights-GraphReportData.html for
+   * documentation
+   * @param metricName name of the insight rule metric
+   * @param period The period over which the expression's statistics are applied
+   * @private
+   */
+  private createMathExpression(metricName: InsightRuleMetricNames, period?: core.Duration): MathExpression {
+    return new MathExpression({
+      // we need the quotes around both parameters or else CloudWatch will scream
+      expression: `INSIGHT_RULE_METRIC('${this.insightRuleRuleName}', '${metricName}')`,
+      usingMetrics: {},
+      period: period,
+    });
   }
 }
 
@@ -119,12 +293,12 @@ export interface InsightRuleProps {
   /**
      * Rule body of the Contributor Insights Rule
      */
-  readonly insightRuleBody: string;
+  readonly insightRuleBody: IRuleBody;
 
   /**
      * Rule state of the Contributor Insights Rule, can either be ENABLED or DISABLED
      *
-     * @default InsightRuleStates.ENABLED, rule will actively collect data and report metrics when left out
+     * @default InsightRuleStates.ENABLED, rule will actively collect data and report metrics
      */
   readonly insightRuleState?: InsightRuleStates;
 }
@@ -162,12 +336,12 @@ export class InsightRule extends InsightRuleBase {
      * @param id The construct's name
      * @param InsightRuleArn The Contributor Insights Rule's arn
      */
-  public static frominsightRuleArn(scope: Construct, id: string,
+  public static fromInsightRuleArn(scope: Construct, id: string,
     InsightRuleArn:string): IInsightRule {
     class Import extends InsightRuleBase {
       public readonly insightRuleArn = InsightRuleArn;
       public readonly insightRuleRuleName =
-      core.Stack.of(scope).parseArn(InsightRuleArn, ':').resourceName!;
+      core.Stack.of(scope).splitArn(InsightRuleArn, core.ArnFormat.SLASH_RESOURCE_NAME).resourceName!;
     }
 
     return new Import(scope, id);
@@ -196,14 +370,8 @@ export class InsightRule extends InsightRuleBase {
       physicalName: props.insightRuleName,
     });
 
-    /**
-         * Validate the inputs,
-         * We shouldnt need to validate rule state,
-         * I know ruleName has some restrictions
-         * Rulebody I suppose can go through a json/yaml validator
-         */
     this.ruleState = props.insightRuleState;
-    this.ruleBody = props.insightRuleBody;
+    this.ruleBody = props.insightRuleBody.renderRuleBody();
 
     const insightRule = new CfnInsightRule(this, 'Resource', {
       ruleName: props.insightRuleName,
@@ -212,9 +380,9 @@ export class InsightRule extends InsightRuleBase {
     });
 
     /**
-         * The arn and name are both attributes of the CFN resource
-         * @see https://docs.aws.amazon.com/cdk/api/latest/python/aws_cdk.aws_cloudwatch/CfnInsightRule.html
-         */
+       * The arn and name are both attributes of the CFN resource
+       * @see https://docs.aws.amazon.com/cdk/api/latest/python/aws_cdk.aws_cloudwatch/CfnInsightRule.html
+       */
     this.insightRuleArn = insightRule.attrArn;
     this.insightRuleRuleName = insightRule.attrRuleName;
   }

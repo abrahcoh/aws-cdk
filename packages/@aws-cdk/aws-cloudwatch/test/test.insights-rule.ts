@@ -1,35 +1,9 @@
-import { expect, haveResource } from '@aws-cdk/assert-internal';
+import { expect, haveResource, haveResourceLike } from '@aws-cdk/assert-internal';
 import { Stack } from '@aws-cdk/core';
 import { Test } from 'nodeunit';
-import { InsightRule, InsightRuleStates } from '../lib';
+import { InsightRule, InsightRuleStates, CustomRuleBody } from '../lib';
 
-const emptyRuleBody = ' ';
-const ruleBody = '{\n' +
-    '    "Schema": {\n' +
-    '        "Name": "CloudWatchLogRule",\n' +
-    '        "Version": 1\n' +
-    '    },\n' +
-    '    "LogGroupNames": [\n' +
-    '        "API-Gateway-Access-Logs*",\n' +
-    '        "Log-group-name2"\n' +
-    '    ],\n' +
-    '    "LogFormat": "JSON",\n' +
-    '    "Contribution": {\n' +
-    '        "Keys": [\n' +
-    '            "$.ip"\n' +
-    '        ],\n' +
-    '        "ValueOf": "$.requestBytes",\n' +
-    '        "Filters": [\n' +
-    '            {\n' +
-    '                "Match": "$.httpMethod",\n' +
-    '                "In": [\n' +
-    '                    "PUT"\n' +
-    '                ]\n' +
-    '            }\n' +
-    '        ]\n' +
-    '    },\n' +
-    '    "AggregateOn": "Sum"\n' +
-    '}';
+const emptyRuleBody = CustomRuleBody.fromRuleBody({});
 
 export = {
   'In InsightRules, Testing only that all parameters are in template'(test: Test) {
@@ -45,7 +19,7 @@ export = {
     //THEN
     expect(stack).to(haveResource('AWS::CloudWatch::InsightRule', {
       RuleName: 'rule1',
-      RuleBody: emptyRuleBody,
+      RuleBody: '{}',
       RuleState: 'ENABLED',
     }));
 
@@ -57,74 +31,35 @@ export = {
     const stack = new Stack();
     new InsightRule(stack, 'rule2', {
       insightRuleName: 'rule2',
-      insightRuleBody: emptyRuleBody,
+      insightRuleBody: CustomRuleBody.fromRuleBody(emptyRuleBody),
     });
 
     //THEN
-    expect(stack).to(haveResource('AWS::CloudWatch::InsightRule', {
+    expect(stack).to(haveResourceLike('AWS::CloudWatch::InsightRule', {
       RuleName: 'rule2',
-      RuleBody: emptyRuleBody,
+      RuleBody: '{}',
       RuleState: 'ENABLED',
     }));
 
     test.done();
   },
 
-  'In InsightRules, Testing that all parameters exist with rule' (test: Test) {
+  'In InsightRules, Testing that RuleState is DISABLED when made so' (test: Test) {
     //WHEN
     const stack = new Stack();
     new InsightRule(stack, 'rule2', {
       insightRuleName: 'rule3',
-      insightRuleBody: ruleBody,
-      insightRuleState: InsightRuleStates.ENABLED,
-    });
-
-    //THEN
-    expect(stack).to(haveResource('AWS::CloudWatch::InsightRule', {
-      RuleName: 'rule3',
-      RuleBody: ruleBody,
-      RuleState: 'ENABLED',
-    }));
-
-    test.done();
-  },
-
-  'In InsightRules, Testing that RuleState is ENABLED when left out with rule body' (test: Test) {
-    //WHEN
-    const stack = new Stack();
-    new InsightRule(stack, 'rule', {
-      insightRuleName: 'rule4',
-      insightRuleBody: ruleBody,
-      insightRuleState: InsightRuleStates.ENABLED,
-    });
-
-    //THEN
-    expect(stack).to(haveResource('AWS::CloudWatch::InsightRule', {
-      RuleName: 'rule4',
-      RuleBody: ruleBody,
-      RuleState: 'ENABLED',
-    }));
-
-    test.done();
-  },
-
-  'In InsightRules, Testing that RuleState is DISABLED when assigned so' (test: Test) {
-    //WHEN
-    const stack = new Stack();
-    new InsightRule(stack, 'rule', {
-      insightRuleName: 'rule5',
-      insightRuleBody: ruleBody,
+      insightRuleBody: CustomRuleBody.fromRuleBody(emptyRuleBody),
       insightRuleState: InsightRuleStates.DISABLED,
     });
 
     //THEN
     expect(stack).to(haveResource('AWS::CloudWatch::InsightRule', {
-      RuleName: 'rule5',
-      RuleBody: ruleBody,
+      RuleName: 'rule3',
+      RuleBody: '{}',
       RuleState: 'DISABLED',
     }));
 
     test.done();
   },
-
 }
