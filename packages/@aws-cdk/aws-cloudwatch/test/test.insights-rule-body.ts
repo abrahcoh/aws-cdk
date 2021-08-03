@@ -180,7 +180,7 @@ export = {
       contribution: {
         keys: ['the key!'],
       },
-    }));
+    }).renderRuleBody());
 
     let expectedRuleBody = {
       Schema: {
@@ -210,7 +210,7 @@ export = {
       contribution: {
         keys: ['the key!'],
       },
-    }));
+    }).renderRuleBody());
 
     let expectedRuleBody = {
       Schema: {
@@ -241,7 +241,7 @@ export = {
         keys: ['the key!'],
         valueof: 'fails',
       },
-    }));
+    }).renderRuleBody());
 
     let expectedRuleBody = {
       Schema: {
@@ -280,7 +280,7 @@ export = {
           },
         ),
       },
-    }));
+    }).renderRuleBody());
 
     let expectedRuleBody = {
       Schema: {
@@ -312,7 +312,7 @@ export = {
       contribution: {
         keys: ['requestId'],
       },
-    }));
+    }).renderRuleBody());
 
     let expectedRuleBody = {
       Schema: {

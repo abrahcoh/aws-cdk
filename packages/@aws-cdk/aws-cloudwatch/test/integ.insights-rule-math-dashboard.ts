@@ -5,19 +5,21 @@ const app = new cdk.App();
 
 const stack = new cdk.Stack(app, 'aws-cdk-insight-rule-log-group');
 
-const rule = cloudwatch.InsightRule.fromInsightRuleName(stack, 'idk', 'aRule');
+const rule = cloudwatch.InsightRule.fromInsightRuleName(stack, 'idk', 'api-path-length');
+
+const pathLengthRange = new cloudwatch.MathExpression({
+  expression: 'max - min',
+  usingMetrics: {
+    max: rule.maximum(),
+    min: rule.minimum(),
+  },
+});
 
 const graph = new cloudwatch.GraphWidget({
   left: [
-    rule.sum(),
-    rule.maximum(),
-    rule.uniqueContributors(),
-    rule.sampleCount(),
-    rule.minimum(),
-    rule.average(),
-    rule.maxContributorValue(),
+    pathLengthRange,
   ],
-  title: 'WickedRule',
+  title: 'Path-Length-Range',
 });
 
 const insightWidget = new cloudwatch.InsightRuleWidget({
@@ -26,12 +28,12 @@ const insightWidget = new cloudwatch.InsightRuleWidget({
 
 const alarm = new cloudwatch.Alarm(stack, 'asd', {
   metric: rule.uniqueContributors(),
-  threshold: 10,
+  threshold: 5,
   evaluationPeriods: 5,
 });
 
 const dash = new cloudwatch.Dashboard(stack, 'wickedDash', {
-  dashboardName: 'another-wild-dashboard',
+  dashboardName: 'Path-Length',
 });
 
 dash.addWidgets(graph, insightWidget, new cloudwatch.AlarmWidget({

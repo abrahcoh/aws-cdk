@@ -2,6 +2,7 @@ import * as iam from '@aws-cdk/aws-iam';
 import * as core from '@aws-cdk/core';
 import { Construct } from 'constructs';
 import { CfnInsightRule } from './cloudwatch.generated';
+import { IRuleBody } from './insight-rule-body';
 import { MathExpression } from './metric';
 
 
@@ -223,7 +224,7 @@ abstract class InsightRuleBase extends core.Resource implements IInsightRule {
   }
 
   /**
-   * Returns a math expression for the number of unique contributors for each datapoint in the rule
+   * Returns a math expression the maximum value from a single observation during the time period represented by that data point.
    *
    * @param period time interval metric will be aggregate over
    * @default undefined, will be 5 minutes
@@ -249,6 +250,7 @@ abstract class InsightRuleBase extends core.Resource implements IInsightRule {
    * @see https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/ContributorInsights-GraphReportData.html for
    * documentation
    * @param metricName name of the insight rule metric
+   * @param period The period over which the expression's statistics are applied
    * @private
    */
   private createMathExpression(metricName: InsightRuleMetricNames, period?: core.Duration): MathExpression {
@@ -291,12 +293,12 @@ export interface InsightRuleProps {
   /**
      * Rule body of the Contributor Insights Rule
      */
-  readonly insightRuleBody: string;
+  readonly insightRuleBody: IRuleBody;
 
   /**
      * Rule state of the Contributor Insights Rule, can either be ENABLED or DISABLED
      *
-     * @default InsightRuleStates.ENABLED, rule will actively collect data and report metrics when left out
+     * @default InsightRuleStates.ENABLED, rule will actively collect data and report metrics
      */
   readonly insightRuleState?: InsightRuleStates;
 }
@@ -334,12 +336,12 @@ export class InsightRule extends InsightRuleBase {
      * @param id The construct's name
      * @param InsightRuleArn The Contributor Insights Rule's arn
      */
-  public static frominsightRuleArn(scope: Construct, id: string,
+  public static fromInsightRuleArn(scope: Construct, id: string,
     InsightRuleArn:string): IInsightRule {
     class Import extends InsightRuleBase {
       public readonly insightRuleArn = InsightRuleArn;
       public readonly insightRuleRuleName =
-      core.Stack.of(scope).parseArn(InsightRuleArn, ':').resourceName!;
+      core.Stack.of(scope).splitArn(InsightRuleArn, core.ArnFormat.SLASH_RESOURCE_NAME).resourceName!;
     }
 
     return new Import(scope, id);
@@ -368,14 +370,8 @@ export class InsightRule extends InsightRuleBase {
       physicalName: props.insightRuleName,
     });
 
-    /**
-         * Validate the inputs,
-         * We shouldnt need to validate rule state,
-         * I know ruleName has some restrictions
-         * Rulebody I suppose can go through a json/yaml validator
-         */
     this.ruleState = props.insightRuleState;
-    this.ruleBody = props.insightRuleBody;
+    this.ruleBody = props.insightRuleBody.renderRuleBody();
 
     const insightRule = new CfnInsightRule(this, 'Resource', {
       ruleName: props.insightRuleName,
@@ -384,9 +380,9 @@ export class InsightRule extends InsightRuleBase {
     });
 
     /**
-         * The arn and name are both attributes of the CFN resource
-         * @see https://docs.aws.amazon.com/cdk/api/latest/python/aws_cdk.aws_cloudwatch/CfnInsightRule.html
-         */
+       * The arn and name are both attributes of the CFN resource
+       * @see https://docs.aws.amazon.com/cdk/api/latest/python/aws_cdk.aws_cloudwatch/CfnInsightRule.html
+       */
     this.insightRuleArn = insightRule.attrArn;
     this.insightRuleRuleName = insightRule.attrRuleName;
   }
